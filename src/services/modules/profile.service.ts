@@ -25,6 +25,16 @@ export interface ProfileResponse {
   badges: ProfileBadge[];
 }
 
+interface AccessExpiredResponse {
+  status: false;
+  message: string;
+  data: {
+    is_active: boolean;
+    upgrade_available: boolean;
+    upgrade_url: string;
+  };
+}
+
 export interface UpdateProfilePayload {
   bio?: string | null;
   region?: string | null;
@@ -42,8 +52,22 @@ export interface UpdateProfileErrorResponse {
 
 export type UpdateProfileResponse = UpdateProfileSuccessResponse | UpdateProfileErrorResponse;
 
+const isAccessExpiredResponse = (value: unknown): value is AccessExpiredResponse => {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      'status' in value &&
+      (value as { status?: unknown }).status === false
+  );
+};
+
 export const getProfile = async (): Promise<ProfileResponse> => {
-  const { data } = await api.get<ProfileResponse>('/clinpro/profile');
+  const { data } = await api.get<ProfileResponse | AccessExpiredResponse>('/clinpro/profile');
+  if (isAccessExpiredResponse(data)) {
+    const error = new Error(data.message || 'Seu acesso a Clin Pro expirou.');
+    (error as { response?: { data?: AccessExpiredResponse } }).response = { data };
+    throw error;
+  }
   return data;
 };
 

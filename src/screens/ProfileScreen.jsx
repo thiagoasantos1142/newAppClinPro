@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AppButton, AppCard, Badge } from '../components/ui.jsx';
@@ -10,22 +11,39 @@ export default function ProfileScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await getProfile();
-        setProfile(data);
-      } catch (err) {
-        let msg = 'Erro ao carregar perfil';
-        if (err?.response?.data?.error === 'Usuário não é um profissional ClinPro') {
-          msg = 'Acesso restrito: apenas profissionais ClinPro podem acessar esta área.';
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const loadProfile = async () => {
+        setLoading(true);
+        setError(null);
+        setProfile(null);
+        try {
+          const data = await getProfile();
+          if (isActive) setProfile(data);
+        } catch (err) {
+          if (!isActive) return;
+          let msg = 'Erro ao carregar perfil';
+          if (err?.response?.data?.error === 'Usuário não é um profissional ClinPro') {
+            msg = 'Acesso restrito: apenas profissionais ClinPro podem acessar esta área.';
+          }
+          if (err?.response?.data?.status === false) {
+            msg = err?.response?.data?.message || 'Seu acesso a Clin Pro expirou.';
+          }
+          setError(msg);
+        } finally {
+          if (isActive) setLoading(false);
         }
-        setError(msg);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+      };
+
+      void loadProfile();
+
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
 
   if (loading) {
     return (

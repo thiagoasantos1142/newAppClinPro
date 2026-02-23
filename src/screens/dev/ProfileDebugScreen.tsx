@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ScrollView, Text } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { getProfile, ProfileResponse } from '../../services/modules/profile.service';
 
 interface DebugState {
@@ -15,21 +16,30 @@ export default function ProfileDebugScreen() {
     data: null,
   });
 
-  useEffect(() => {
-    const fetchProfile = async (): Promise<void> => {
-      try {
-        setState({ loading: true, error: null, data: null });
-        const response = await getProfile();
-        console.log('ProfileDebugScreen response:', response);
-        setState({ loading: false, error: null, data: response });
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        setState({ loading: false, error: message, data: null });
-      }
-    };
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
 
-    fetchProfile();
-  }, []);
+      const fetchProfile = async (): Promise<void> => {
+        try {
+          setState({ loading: true, error: null, data: null });
+          const response = await getProfile();
+          console.log('ProfileDebugScreen response:', response);
+          if (isActive) setState({ loading: false, error: null, data: response });
+        } catch (err: unknown) {
+          if (!isActive) return;
+          const message = err instanceof Error ? err.message : 'Unknown error';
+          setState({ loading: false, error: message, data: null });
+        }
+      };
+
+      void fetchProfile();
+
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
 
   if (state.loading) {
     return (
