@@ -76,6 +76,7 @@ export default function ModuleTemplate({
             key={action.label}
             title={action.label}
             variant={action.variant || 'primary'}
+            disabled={action.disabled}
             onPress={() => {
               if (action.route && navigation) {
                 navigation.navigate(action.route, action.params || {});

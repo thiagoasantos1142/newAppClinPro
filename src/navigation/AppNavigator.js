@@ -6,7 +6,11 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/AuthContext';
+import { QuestionsFlowProvider } from '../context/QuestionsFlowContext';
+import { colors } from '../theme/tokens';
+import { useOnboarding } from '../hooks/useOnboarding';
+import { getRouteForStep } from './onboardingStepMap';
 
 import HomeScreen from '../screens/HomeScreen.jsx';
 import ServiceDetailScreen from '../screens/ServiceDetailScreen.jsx';
@@ -42,8 +46,14 @@ import ReviewsListScreen from '../screens/ReviewsListScreen.jsx';
 import VerificationStatusScreen from '../screens/VerificationStatusScreen.jsx';
 import ProfessionalScoreScreen from '../screens/ProfessionalScoreScreen.jsx';
 import OnboardingWelcomeScreen from '../screens/OnboardingWelcomeScreen.jsx';
-import OnboardingQuestionsScreen from '../screens/OnboardingQuestionsScreen.jsx';
+import OnboardingQuestionsEntryScreen from '../screens/OnboardingQuestionsEntryScreen.jsx';
+import QuestionsClientsScreen from '../screens/QuestionsClientsScreen.jsx';
+import QuestionsExperienceScreen from '../screens/QuestionsExperienceScreen.jsx';
+import QuestionsGoalScreen from '../screens/QuestionsGoalScreen.jsx';
+import QuestionsMEIScreen from '../screens/QuestionsMEIScreen.jsx';
+import QuestionsTransitionScreen from '../screens/QuestionsTransitionScreen.jsx';
 import OnboardingProfileScreen from '../screens/OnboardingProfileScreen.jsx';
+import OnboardingFirstActionScreen from '../screens/OnboardingFirstActionScreen.jsx';
 import OnboardingAccountIntroScreen from '../screens/OnboardingAccountIntroScreen.jsx';
 import OnboardingKYCScreen from '../screens/OnboardingKYCScreen.jsx';
 import OnboardingFirstGoalScreen from '../screens/OnboardingFirstGoalScreen.jsx';
@@ -55,7 +65,6 @@ import BackendConnectionTestScreen from '../screens/dev/BackendConnectionTestScr
 import PhoneLoginScreen from '../screens/auth/PhoneLoginScreen.jsx';
 import OtpVerificationScreen from '../screens/auth/OtpVerificationScreen.jsx';
 import AppDrawerContent from '../components/navigation/AppDrawerContent.jsx';
-import { colors } from '../theme/tokens';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -143,8 +152,8 @@ function AppStack() {
       <Stack.Screen name="VerificationStatus" component={VerificationStatusScreen} />
       <Stack.Screen name="ProfessionalScore" component={ProfessionalScoreScreen} />
       <Stack.Screen name="OnboardingWelcome" component={OnboardingWelcomeScreen} />
-      <Stack.Screen name="OnboardingQuestions" component={OnboardingQuestionsScreen} />
       <Stack.Screen name="OnboardingProfile" component={OnboardingProfileScreen} />
+      <Stack.Screen name="OnboardingFirstAction" component={OnboardingFirstActionScreen} />
       <Stack.Screen name="OnboardingAccountIntro" component={OnboardingAccountIntroScreen} />
       <Stack.Screen name="OnboardingKYC" component={OnboardingKYCScreen} />
       <Stack.Screen name="OnboardingFirstGoal" component={OnboardingFirstGoalScreen} />
@@ -161,6 +170,69 @@ function AppStack() {
   );
 }
 
+function OnboardingFlow({ initialRouteName }) {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRouteName}>
+      <Stack.Screen name="OnboardingWelcome" component={OnboardingWelcomeScreen} />
+      <Stack.Screen name="OnboardingQuestionsEntry" component={OnboardingQuestionsEntryScreen} />
+      <Stack.Screen name="QuestionsClients" component={QuestionsClientsScreen} />
+      <Stack.Screen name="QuestionsExperience" component={QuestionsExperienceScreen} />
+      <Stack.Screen name="QuestionsGoal" component={QuestionsGoalScreen} />
+      <Stack.Screen name="QuestionsMEI" component={QuestionsMEIScreen} />
+      <Stack.Screen name="QuestionsTransition" component={QuestionsTransitionScreen} />
+      <Stack.Screen name="OnboardingProfile" component={OnboardingProfileScreen} />
+      <Stack.Screen name="OnboardingFirstAction" component={OnboardingFirstActionScreen} />
+      <Stack.Screen name="OnboardingAccountIntro" component={OnboardingAccountIntroScreen} />
+      <Stack.Screen name="OnboardingKYC" component={OnboardingKYCScreen} />
+      <Stack.Screen name="OnboardingFirstGoal" component={OnboardingFirstGoalScreen} />
+      <Stack.Screen name="OnboardingTutorial" component={OnboardingTutorialScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function OnboardingGate() {
+  const { status, loading, error, refresh } = useOnboarding();
+  const initialRouteName = getRouteForStep(status?.current_step || 'welcome');
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Text>Carregando onboarding...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 }}>
+        <Text>Erro ao carregar onboarding.</Text>
+        <Pressable onPress={() => refresh()} style={{ marginTop: 12 }}>
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>Tentar novamente</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (status?.completed) {
+    return (
+      <Drawer.Navigator
+        id="RootDrawer"
+        screenOptions={{
+          headerShown: false,
+          drawerType: 'slide',
+          overlayColor: 'rgba(0,0,0,0.5)',
+          drawerStyle: { width: 300 },
+        }}
+        drawerContent={(props) => <AppDrawerContent {...props} />}
+      >
+        <Drawer.Screen name="RootStack" component={AppStack} />
+      </Drawer.Navigator>
+    );
+  }
+
+  return <OnboardingFlow initialRouteName={initialRouteName} />;
+}
+
 function AuthFlow() {
   return (
     <AuthStack.Navigator screenOptions={{ headerShown: false }}>
@@ -174,40 +246,31 @@ export default function AppNavigator() {
   const { loading, isAuthenticated } = useAuth();
 
   return (
-    <NavigationContainer
-      theme={{
-        ...DefaultTheme,
-        colors: {
-          ...DefaultTheme.colors,
-          background: colors.background,
-          card: '#FFFFFF',
-          text: colors.foreground,
-          border: colors.border,
-          primary: colors.primary,
-        },
-      }}
-    >
-      {loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Text>Carregando...</Text>
-        </View>
-      ) : isAuthenticated ? (
-        <Drawer.Navigator
-          id="RootDrawer"
-          screenOptions={{
-            headerShown: false,
-            drawerType: 'slide',
-            overlayColor: 'rgba(0,0,0,0.5)',
-            drawerStyle: { width: 300 },
-          }}
-          drawerContent={(props) => <AppDrawerContent {...props} />}
-        >
-          <Drawer.Screen name="RootStack" component={AppStack} />
-        </Drawer.Navigator>
-      ) : (
-        <AuthFlow />
-      )}
-    </NavigationContainer>
+    <QuestionsFlowProvider>
+      <NavigationContainer
+        theme={{
+          ...DefaultTheme,
+          colors: {
+            ...DefaultTheme.colors,
+            background: colors.background,
+            card: '#FFFFFF',
+            text: colors.foreground,
+            border: colors.border,
+            primary: colors.primary,
+          },
+        }}
+      >
+        {loading ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Text>Carregando...</Text>
+          </View>
+        ) : isAuthenticated ? (
+          <OnboardingGate />
+        ) : (
+          <AuthFlow />
+        )}
+      </NavigationContainer>
+    </QuestionsFlowProvider>
   );
 }
 
