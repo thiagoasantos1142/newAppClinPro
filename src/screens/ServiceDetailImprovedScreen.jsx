@@ -1,10 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
-import { getServiceById } from '../services/modules/services.service';
+import { acceptServiceById, getServiceById } from '../services/modules/services.service';
 
 function formatDurationFromDateRange(startAt, endAt) {
   if (!startAt || !endAt) return null;
@@ -29,6 +29,7 @@ export default function ServiceDetailImprovedScreen({ route, navigation }) {
   const [service, setService] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [accepting, setAccepting] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -85,6 +86,22 @@ export default function ServiceDetailImprovedScreen({ route, navigation }) {
       distanceHeader: service.distance_label ? `${service.distance_label} de você` : 'Distância indisponível',
     };
   }, [service]);
+
+  const handleAccept = useCallback(async () => {
+    if (!serviceId || accepting) return;
+
+    setAccepting(true);
+    try {
+      await acceptServiceById(serviceId, { accepted_from: 'detail' });
+      Alert.alert('Sucesso', 'Serviço aceito com sucesso.', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch (err) {
+      Alert.alert('Erro', err?.response?.data?.message || err?.message || 'Não foi possível aceitar o serviço.');
+    } finally {
+      setAccepting(false);
+    }
+  }, [accepting, navigation, serviceId]);
 
   return (
     <View style={styles.container}>
@@ -209,8 +226,9 @@ export default function ServiceDetailImprovedScreen({ route, navigation }) {
           )}
 
           <AppButton
-            title="Aceitar Serviço"
-            onPress={() => navigation.goBack()}
+            title={accepting ? 'Aceitando...' : 'Aceitar Serviço'}
+            disabled={accepting}
+            onPress={handleAccept}
             left={<Feather name="check-circle" size={16} color="#FFFFFF" />}
           />
           <AppButton

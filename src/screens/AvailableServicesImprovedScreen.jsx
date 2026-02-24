@@ -1,11 +1,11 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { RequireClinPro } from '../components/RequireClinPro.jsx';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
-import { getAvailableServices } from '../services/modules/services.service';
+import { acceptServiceById, getAvailableServices } from '../services/modules/services.service';
 
 export default function AvailableServicesImprovedScreen({ navigation }) {
   const [showFilters, setShowFilters] = useState(false);
@@ -14,6 +14,7 @@ export default function AvailableServicesImprovedScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
+  const [acceptingIds, setAcceptingIds] = useState({});
   const loadingMoreRef = useRef(false);
 
   const loadServices = useCallback(async (pageToLoad = 1, { append = false } = {}) => {
@@ -105,6 +106,22 @@ export default function AvailableServicesImprovedScreen({ navigation }) {
   );
 
   const hasMore = list.length < (pagination.total || 0);
+
+  const handleAcceptService = useCallback(async (serviceId) => {
+    if (!serviceId || acceptingIds[serviceId]) return;
+
+    setAcceptingIds((prev) => ({ ...prev, [serviceId]: true }));
+    try {
+      await acceptServiceById(serviceId, { accepted_from: 'list' });
+      setItems((prev) => prev.filter((item) => String(item.id) !== String(serviceId)));
+      setPagination((prev) => ({ ...prev, total: Math.max((prev.total || 1) - 1, 0) }));
+      Alert.alert('Sucesso', 'Serviço aceito com sucesso.');
+    } catch (err) {
+      Alert.alert('Erro', err?.response?.data?.message || err?.message || 'Não foi possível aceitar o serviço.');
+    } finally {
+      setAcceptingIds((prev) => ({ ...prev, [serviceId]: false }));
+    }
+  }, [acceptingIds]);
 
   const handleScroll = useCallback((e) => {
     if (loading || loadingMore || error || !hasMore) return;
@@ -202,7 +219,12 @@ export default function AvailableServicesImprovedScreen({ navigation }) {
                   style={{ flex: 1 }}
                   onPress={() => navigation.navigate('ServiceDetailImproved', { serviceId: service.id })}
                 />
-                <AppButton title="Aceitar" style={{ flex: 1 }} onPress={() => {}} />
+                <AppButton
+                  title={acceptingIds[service.id] ? 'Aceitando...' : 'Aceitar'}
+                  style={{ flex: 1 }}
+                  disabled={!!acceptingIds[service.id]}
+                  onPress={() => handleAcceptService(service.id)}
+                />
               </View>
             </AppCard>
           ))}
