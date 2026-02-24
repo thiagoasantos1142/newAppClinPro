@@ -172,6 +172,7 @@ function AppStack() {
 function OnboardingFlow({ initialRouteName }) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRouteName}>
+      <Stack.Screen name="MainTabs" component={MainTabs} />
       <Stack.Screen name="OnboardingWelcome" component={OnboardingWelcomeScreen} />
       <Stack.Screen name="OnboardingQuestionsEntry" component={OnboardingQuestionsEntryScreen} />
       <Stack.Screen name="QuestionsClients" component={QuestionsClientsScreen} />

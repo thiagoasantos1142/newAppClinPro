@@ -1,10 +1,12 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './authSlice';
+import onboardingReducer from './onboardingSlice';
 import questionsFlowReducer from './questionsFlowSlice';
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    onboarding: onboardingReducer,
     questionsFlow: questionsFlowReducer,
   },
 });
