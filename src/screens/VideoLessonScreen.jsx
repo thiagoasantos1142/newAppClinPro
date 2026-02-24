@@ -1,22 +1,64 @@
-import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AppButton, AppCard, ProgressBar } from '../components/ui.jsx';
-import { trails } from '../data/mockData';
+import { getTrainingLessonById } from '../services/modules/training.service';
 import { colors } from '../theme/tokens';
 
 export default function VideoLessonScreen({ route, navigation }) {
   const { trailId, lessonId } = route.params || {};
-  const trail = trails.find((item) => item.id === String(trailId)) || trails[0];
-  const lesson = trail.lessons.find((item) => item.id === String(lessonId)) || trail.lessons[0];
   const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(45);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [localProgress, setLocalProgress] = useState(null);
 
-  const nextLesson = useMemo(() => {
-    const currentIndex = trail.lessons.findIndex((item) => item.id === lesson.id);
-    if (currentIndex < 0) return null;
-    return trail.lessons[currentIndex + 1] || null;
-  }, [trail, lesson]);
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const loadLesson = async () => {
+        if (!lessonId) {
+          setError('Aula não informada');
+          setLoading(false);
+          return;
+        }
+
+        setLoading(true);
+        setError(null);
+        try {
+          const response = await getTrainingLessonById(lessonId);
+          if (!isActive) return;
+          setData(response);
+          setLocalProgress(null);
+        } catch (err) {
+          if (!isActive) return;
+          setError(err?.response?.data?.message || err?.message || 'Erro ao carregar aula');
+        } finally {
+          if (isActive) setLoading(false);
+        }
+      };
+
+      void loadLesson();
+
+      return () => {
+        isActive = false;
+      };
+    }, [lessonId])
+  );
+
+  const lesson = data?.lesson || null;
+  const progress = localProgress ?? Number(lesson?.progress_percent || 0);
+  const nextLesson = lesson?.next_lesson || null;
+  const keyPoints = Array.isArray(lesson?.key_points) ? lesson.key_points : [];
+
+  const resolvedTrailId = lesson?.trail_id || trailId;
+
+  const subtitle = useMemo(() => {
+    if (!lesson?.description) return 'Sem descrição informada.';
+    return lesson.description;
+  }, [lesson?.description]);
 
   return (
     <View style={styles.container}>
@@ -26,68 +68,83 @@ export default function VideoLessonScreen({ route, navigation }) {
             <Feather name="chevron-left" size={22} color="#FFFFFF" />
           </Pressable>
           <View>
-            <Text style={styles.trailText}>{trail.title}</Text>
+            <Text style={styles.trailText}>{resolvedTrailId ? `Trilha ${resolvedTrailId}` : 'Treinamento'}</Text>
             <Text style={styles.headerTitle}>Aula</Text>
           </View>
         </View>
       </View>
 
       <View style={styles.videoBox}>
-        <Pressable style={styles.videoTouch} onPress={() => setIsPlaying((v) => !v)}>
+        <Pressable style={styles.videoTouch} onPress={() => setIsPlaying((v) => !v)} disabled={loading || !!error}>
           <View style={styles.videoCenter}>
             <View style={styles.playBtn}>
               <Feather name={isPlaying ? 'pause' : 'play'} size={28} color="#FFF" />
             </View>
-            <Text style={styles.videoLabel}>Vídeo da Aula</Text>
+            <Text style={styles.videoLabel}>
+              {loading ? 'Carregando aula...' : error ? 'Falha ao carregar vídeo' : lesson?.video_url ? 'Vídeo da Aula' : 'Vídeo indisponível'}
+            </Text>
           </View>
         </Pressable>
         <View style={styles.videoProgressWrap}><ProgressBar value={progress} color="#FFFFFF" /></View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <View>
-          <Text style={styles.title}>{lesson.title}</Text>
-          <Text style={styles.subtitle}>Aprenda as melhores técnicas para uma execução eficiente e profissional.</Text>
+      {loading ? (
+        <View style={styles.centerState}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.stateText}>Carregando aula...</Text>
         </View>
+      ) : error || !lesson ? (
+        <View style={styles.centerState}>
+          <Text style={[styles.stateText, styles.errorText]}>{error || 'Aula não encontrada'}</Text>
+          <AppButton title="Voltar" variant="secondary" onPress={() => navigation.goBack()} style={{ marginTop: 12 }} />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.content}>
+          <View>
+            <Text style={styles.title}>{lesson.title || 'Aula'}</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
+            {!!lesson.duration_label && <Text style={styles.meta}>{lesson.duration_label}</Text>}
+          </View>
 
-        <AppCard>
-          <Text style={styles.cardTitle}>Pontos Principais</Text>
-          {[
-            'Escolha a ferramenta adequada para cada superfície',
-            'Mantenha sequência lógica para ganhar velocidade',
-            'Revise detalhes finais antes de encerrar',
-          ].map((item, idx) => (
-            <View key={item} style={styles.pointRow}>
-              <View style={styles.pointIndex}><Text style={styles.pointIndexText}>{idx + 1}</Text></View>
-              <Text style={styles.pointText}>{item}</Text>
-            </View>
-          ))}
-        </AppCard>
+          <AppCard>
+            <Text style={styles.cardTitle}>Pontos Principais</Text>
+            {keyPoints.length === 0 ? (
+              <Text style={styles.pointText}>Nenhum ponto principal informado.</Text>
+            ) : (
+              keyPoints.map((item, idx) => (
+                <View key={`${idx}-${item}`} style={styles.pointRow}>
+                  <View style={styles.pointIndex}><Text style={styles.pointIndexText}>{idx + 1}</Text></View>
+                  <Text style={styles.pointText}>{item}</Text>
+                </View>
+              ))
+            )}
+          </AppCard>
 
-        <AppButton
-          title="Marcar como Concluída"
-          onPress={() => setProgress(100)}
-          left={<Feather name="check-circle" size={16} color="#FFF" />}
-        />
-
-        {nextLesson && !nextLesson.isQuiz && (
           <AppButton
-            title={`Próxima Aula: ${nextLesson.title}`}
-            variant="secondary"
-            onPress={() => navigation.replace('VideoLesson', { trailId: trail.id, lessonId: nextLesson.id })}
-            left={<Feather name="skip-forward" size={16} color={colors.cardForeground} />}
+            title="Marcar como Concluída"
+            onPress={() => setLocalProgress(100)}
+            left={<Feather name="check-circle" size={16} color="#FFF" />}
           />
-        )}
 
-        {nextLesson && nextLesson.isQuiz && (
-          <AppButton
-            title="Ir para Avaliação"
-            variant="secondary"
-            onPress={() => navigation.navigate('Quiz', { trailId: trail.id })}
-            left={<Feather name="award" size={16} color={colors.cardForeground} />}
-          />
-        )}
-      </ScrollView>
+          {nextLesson && !nextLesson.is_quiz && (
+            <AppButton
+              title={`Próxima Aula: ${nextLesson.title}`}
+              variant="secondary"
+              onPress={() => navigation.replace('VideoLesson', { trailId: resolvedTrailId, lessonId: nextLesson.id })}
+              left={<Feather name="skip-forward" size={16} color={colors.cardForeground} />}
+            />
+          )}
+
+          {nextLesson && nextLesson.is_quiz && (
+            <AppButton
+              title="Ir para Avaliação"
+              variant="secondary"
+              onPress={() => navigation.navigate('Quiz', { trailId: resolvedTrailId })}
+              left={<Feather name="award" size={16} color={colors.cardForeground} />}
+            />
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -106,13 +163,16 @@ const styles = StyleSheet.create({
   playBtn: { width: 72, height: 72, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   videoLabel: { color: 'rgba(255,255,255,0.8)', marginTop: 10 },
   videoProgressWrap: { paddingHorizontal: 12, paddingBottom: 10 },
+  centerState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  stateText: { marginTop: 10, color: colors.mutedForeground, fontSize: 14, textAlign: 'center' },
+  errorText: { color: colors.danger, marginTop: 0 },
   content: { padding: 16, gap: 12, paddingBottom: 28 },
   title: { color: colors.cardForeground, fontSize: 22, fontWeight: '800' },
   subtitle: { color: colors.mutedForeground, marginTop: 4, fontSize: 14 },
+  meta: { color: colors.primary, marginTop: 8, fontSize: 12, fontWeight: '700' },
   cardTitle: { color: colors.cardForeground, fontSize: 16, fontWeight: '700', marginBottom: 10 },
   pointRow: { flexDirection: 'row', gap: 10, marginBottom: 8, alignItems: 'flex-start' },
   pointIndex: { width: 24, height: 24, borderRadius: 999, backgroundColor: colors.secondary, alignItems: 'center', justifyContent: 'center' },
   pointIndexText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
   pointText: { color: colors.cardForeground, fontSize: 14, flex: 1 },
 });
-

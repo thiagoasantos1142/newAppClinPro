@@ -1,167 +1,276 @@
-import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import moment from 'moment';
+import 'moment/locale/pt-br';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AppCard } from '../components/ui.jsx';
 import { RequireClinPro } from '../components/RequireClinPro.jsx';
 import { colors } from '../theme/tokens';
+import { getCommunityPosts } from '../services/modules/community.service';
+
+moment.locale('pt-br');
 
 const filters = ['Todas', 'Dicas', 'Conquistas', 'Perguntas', 'Treinamentos', 'Motivação'];
+const avatars = ['👩', '👩‍🦱', '👩‍🦰', '👨', '🧑'];
 
-const posts = [
-  {
-    id: '1',
-    author: 'Maria Silva',
-    avatar: '👩',
-    region: 'São Paulo, SP',
-    level: 'N3',
-    category: 'Conquistas',
-    content: 'Acabei de completar 100 serviços! Muito feliz com essa conquista.',
-    likes: 45,
-    comments: 12,
-    timestamp: 'Há 2 horas',
-    liked: false,
-    saved: false,
-  },
-  {
-    id: '2',
-    author: 'Ana Costa',
-    avatar: '👩‍🦱',
-    region: 'Rio de Janeiro, RJ',
-    level: 'N2',
-    category: 'Treinamentos',
-    content: 'Concluiu a trilha Atendimento Profissional e recebeu novo certificado.',
-    likes: 32,
-    comments: 8,
-    timestamp: 'Há 3 horas',
-    liked: true,
-    saved: false,
-  },
-  {
-    id: '3',
-    author: 'Juliana Santos',
-    avatar: '👩‍🦰',
-    region: 'Belo Horizonte, MG',
-    level: 'N4',
-    category: 'Dicas',
-    content: 'Sempre leve um kit de emergência com produtos básicos. Ajuda muito em clientes novos.',
-    likes: 67,
-    comments: 23,
-    timestamp: 'Há 5 horas',
-    liked: false,
-    saved: true,
-  },
-];
+function toApiCategory(category) {
+  if (category === 'Motivação') return 'Motivacao';
+  return category;
+}
+
+function formatPostTime(value) {
+  if (!value) return '';
+  const m = moment(value);
+  if (!m.isValid()) return '';
+  return m.fromNow();
+}
+
+function pickAvatar(seed = '') {
+  const index = Math.abs(String(seed).split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0)) % avatars.length;
+  return avatars[index];
+}
 
 export default function CommunityFeedScreen({ navigation }) {
   const [activeFilter, setActiveFilter] = useState('Todas');
+  const [items, setItems] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+  const [highlights, setHighlights] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState(null);
+  const loadingMoreRef = useRef(false);
 
-  const filteredPosts = useMemo(() => {
-    if (activeFilter === 'Todas') return posts;
-    return posts.filter((post) => post.category === activeFilter);
-  }, [activeFilter]);
+  const loadPosts = useCallback(async ({ page = 1, append = false, category = 'Todas' } = {}) => {
+    if (append) {
+      if (loadingMoreRef.current) return;
+      loadingMoreRef.current = true;
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+      setError(null);
+    }
+
+    try {
+      const data = await getCommunityPosts({ page, category: toApiCategory(category), limit: 20 });
+      const nextItems = Array.isArray(data?.items) ? data.items : [];
+
+      setItems((prev) => {
+        if (!append) return nextItems;
+        const seen = new Set(prev.map((item) => String(item?.id)));
+        const deduped = nextItems.filter((item) => {
+          const id = String(item?.id);
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+        return [...prev, ...deduped];
+      });
+
+      setPagination(data?.pagination || { page, limit: 20, total: append ? items.length : 0 });
+      if (!append) setHighlights(data?.highlights || null);
+      if (!append) setError(null);
+    } catch (err) {
+      if (!append) {
+        setError(err?.response?.data?.message || err?.message || 'Erro ao carregar posts');
+      }
+    } finally {
+      if (append) {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
+    }
+  }, [items.length]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadPosts({ page: 1, append: false, category: activeFilter });
+
+      return () => {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      };
+    }, [activeFilter, loadPosts])
+  );
+
+  const posts = useMemo(
+    () =>
+      items.map((post) => ({
+        id: String(post.id),
+        author: post.author?.name || 'Usuário',
+        avatar: pickAvatar(post.author?.name || post.id),
+        region: '',
+        level: 'N1',
+        category: post.category || 'Geral',
+        title: post.title || '',
+        content: post.content_preview || '',
+        likes: post.likes_count ?? 0,
+        comments: post.comments_count ?? 0,
+        timestamp: formatPostTime(post.created_at),
+        liked: false,
+        saved: false,
+      })),
+    [items]
+  );
+
+  const hasMore = posts.length < (pagination.total || 0);
+
+  const handleScroll = useCallback((e) => {
+    if (loading || loadingMore || error || !hasMore) return;
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+    if (distanceFromBottom < 180) {
+      void loadPosts({ page: (pagination.page || 1) + 1, append: true, category: activeFilter });
+    }
+  }, [activeFilter, error, hasMore, loadPosts, loading, loadingMore, pagination.page]);
+
+  const onChangeFilter = (filter) => {
+    if (filter === activeFilter) return;
+    setActiveFilter(filter);
+    setItems([]);
+    setPagination({ page: 1, limit: 20, total: 0 });
+    setHighlights(null);
+  };
+
+  const mostLiked = highlights?.most_liked;
+  const mostActive = highlights?.most_active;
 
   return (
     <RequireClinPro>
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <View style={styles.menuSlot} />
-          <Text style={styles.headerTitle}>Comunidade</Text>
-        </View>
-        <Text style={styles.headerSubtitle}>Dicas e trocas com outros profissionais</Text>
-      </View>
-
-      <View style={styles.filterBar}>
-        <ScrollView
-          horizontal
-          bounces={false}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterRow}
-        >
-          {filters.map((filter) => (
-            <Pressable
-              key={filter}
-              onPress={() => setActiveFilter(filter)}
-              style={[styles.filterPill, activeFilter === filter && styles.filterPillActive]}
-            >
-              <Text style={[styles.filterText, activeFilter === filter && styles.filterTextActive]}>{filter}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.highlightBox}>
-          <View style={styles.highlightTitleRow}>
-            <Feather name="trending-up" size={16} color="#7C3AED" />
-            <Text style={styles.highlightTitle}>Destaques da Semana</Text>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.headerTitleRow}>
+            <View style={styles.menuSlot} />
+            <Text style={styles.headerTitle}>Comunidade</Text>
           </View>
-          <View style={styles.highlightCard}>
-            <Text style={styles.highlightEmoji}>👩‍🦰</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.highlightName}>Juliana Santos</Text>
-              <Text style={styles.highlightDesc}>Post mais curtido: 67 likes</Text>
-            </View>
-            <Feather name="award" size={16} color="#7C3AED" />
-          </View>
-          <View style={styles.highlightCard}>
-            <Text style={styles.highlightEmoji}>👩</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.highlightName}>Maria Silva</Text>
-              <Text style={styles.highlightDesc}>Mais ativa: 8 publicações</Text>
-            </View>
-            <Feather name="star" size={16} color="#CA8A04" />
-          </View>
+          <Text style={styles.headerSubtitle}>Dicas e trocas com outros profissionais</Text>
         </View>
 
-        {filteredPosts.map((post) => (
-          <Pressable key={post.id} onPress={() => navigation.navigate('PostDetail', { postId: post.id })}>
-            <AppCard style={styles.postCard}>
-              <View style={styles.postHeader}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{post.avatar}</Text>
+        <View style={styles.filterBar}>
+          <ScrollView
+            horizontal
+            bounces={false}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+          >
+            {filters.map((filter) => (
+              <Pressable
+                key={filter}
+                onPress={() => onChangeFilter(filter)}
+                style={[styles.filterPill, activeFilter === filter && styles.filterPillActive]}
+              >
+                <Text style={[styles.filterText, activeFilter === filter && styles.filterTextActive]}>{filter}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.content} onScroll={handleScroll} scrollEventThrottle={16}>
+          {loading ? (
+            <AppCard style={styles.infoCard}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.footerText}>Carregando posts...</Text>
+            </AppCard>
+          ) : null}
+
+          {!loading && error ? (
+            <AppCard style={styles.errorCard}>
+              <Text style={styles.errorText}>{error}</Text>
+            </AppCard>
+          ) : null}
+
+          <View style={styles.highlightBox}>
+            <View style={styles.highlightTitleRow}>
+              <Feather name="trending-up" size={16} color="#7C3AED" />
+              <Text style={styles.highlightTitle}>Destaques da Semana</Text>
+            </View>
+            <View style={styles.highlightCard}>
+              <Text style={styles.highlightEmoji}>{pickAvatar(mostLiked?.author_name || 'liked')}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.highlightName}>{mostLiked?.author_name || 'Sem destaque'}</Text>
+                <Text style={styles.highlightDesc}>Post mais curtido: {mostLiked?.likes_count ?? 0} likes</Text>
+              </View>
+              <Feather name="award" size={16} color="#7C3AED" />
+            </View>
+            <View style={styles.highlightCard}>
+              <Text style={styles.highlightEmoji}>{pickAvatar(mostActive?.author_name || 'active')}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.highlightName}>{mostActive?.author_name || 'Sem destaque'}</Text>
+                <Text style={styles.highlightDesc}>Mais ativa: {mostActive?.posts_count ?? 0} publicações</Text>
+              </View>
+              <Feather name="star" size={16} color="#CA8A04" />
+            </View>
+          </View>
+
+          {!loading && !error && posts.length === 0 ? (
+            <AppCard>
+              <Text style={styles.highlightName}>Nenhum post encontrado</Text>
+              <Text style={styles.highlightDesc}>Tente outro filtro ou volte mais tarde.</Text>
+            </AppCard>
+          ) : null}
+
+          {posts.map((post) => (
+            <Pressable key={post.id} onPress={() => navigation.navigate('PostDetail', { postId: post.id })}>
+              <AppCard style={styles.postCard}>
+                <View style={styles.postHeader}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{post.avatar}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.postNameRow}>
+                      <Text style={styles.postName}>{post.author}</Text>
+                      <View style={styles.levelPill}>
+                        <Text style={styles.levelPillText}>{post.level}</Text>
+                      </View>
+                    </View>
+                    {!!post.region && <Text style={styles.postRegion}>{post.region}</Text>}
+                  </View>
+                  <View style={styles.categoryPill}>
+                    <Text style={styles.categoryPillText}>{post.category}</Text>
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.postNameRow}>
-                    <Text style={styles.postName}>{post.author}</Text>
-                    <View style={styles.levelPill}>
-                      <Text style={styles.levelPillText}>{post.level}</Text>
+
+                {!!post.title && <Text style={styles.postTitle}>{post.title}</Text>}
+                <Text style={styles.postContent}>{post.content || 'Sem prévia de conteúdo.'}</Text>
+
+                <View style={styles.postFooter}>
+                  <View style={styles.footerLeft}>
+                    <View style={styles.footerAction}>
+                      <Feather name="heart" size={16} color={post.liked ? '#DC2626' : colors.mutedForeground} />
+                      <Text style={styles.footerText}>{post.likes}</Text>
+                    </View>
+                    <View style={styles.footerAction}>
+                      <Feather name="message-circle" size={16} color={colors.mutedForeground} />
+                      <Text style={styles.footerText}>{post.comments}</Text>
                     </View>
                   </View>
-                  <Text style={styles.postRegion}>{post.region}</Text>
-                </View>
-                <View style={styles.categoryPill}>
-                  <Text style={styles.categoryPillText}>{post.category}</Text>
-                </View>
-              </View>
-
-              <Text style={styles.postContent}>{post.content}</Text>
-
-              <View style={styles.postFooter}>
-                <View style={styles.footerLeft}>
-                  <View style={styles.footerAction}>
-                    <Feather name="heart" size={16} color={post.liked ? '#DC2626' : colors.mutedForeground} />
-                    <Text style={styles.footerText}>{post.likes}</Text>
-                  </View>
-                  <View style={styles.footerAction}>
-                    <Feather name="message-circle" size={16} color={colors.mutedForeground} />
-                    <Text style={styles.footerText}>{post.comments}</Text>
+                  <View style={styles.footerRight}>
+                    <Feather name="bookmark" size={16} color={post.saved ? colors.primary : colors.mutedForeground} />
+                    <Text style={styles.timestamp}>{post.timestamp}</Text>
                   </View>
                 </View>
-                <View style={styles.footerRight}>
-                  <Feather name="bookmark" size={16} color={post.saved ? colors.primary : colors.mutedForeground} />
-                  <Text style={styles.timestamp}>{post.timestamp}</Text>
-                </View>
-              </View>
+              </AppCard>
+            </Pressable>
+          ))}
+
+          {!loading && !error && loadingMore ? (
+            <AppCard style={styles.infoCard}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.footerText}>Carregando mais posts...</Text>
             </AppCard>
-          </Pressable>
-        ))}
-      </ScrollView>
+          ) : null}
 
-      <Pressable style={styles.fab} onPress={() => navigation.navigate('CreatePost')}>
-        <Feather name="plus" size={22} color="#FFFFFF" />
-      </Pressable>
-    </View>
+          {!loading && !error && !hasMore && posts.length > 0 ? (
+            <Text style={styles.endListText}>Todos os posts foram carregados.</Text>
+          ) : null}
+        </ScrollView>
+
+        <Pressable style={styles.fab} onPress={() => navigation.navigate('CreatePost')}>
+          <Feather name="plus" size={22} color="#FFFFFF" />
+        </Pressable>
+      </View>
     </RequireClinPro>
   );
 }
@@ -191,6 +300,10 @@ const styles = StyleSheet.create({
   filterText: { color: colors.cardForeground, fontSize: 14, fontWeight: '600' },
   filterTextActive: { color: '#FFFFFF' },
   content: { padding: 16, gap: 12, paddingBottom: 90 },
+  infoCard: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  errorCard: { borderWidth: 1, borderColor: '#FECACA', backgroundColor: '#FFF7F7' },
+  errorText: { color: colors.danger, fontSize: 13, fontWeight: '600' },
+  endListText: { textAlign: 'center', color: colors.mutedForeground, fontSize: 12, paddingVertical: 6 },
   highlightBox: {
     borderRadius: 16,
     borderWidth: 1,
@@ -230,6 +343,7 @@ const styles = StyleSheet.create({
   postRegion: { color: colors.mutedForeground, fontSize: 11, marginTop: 2 },
   categoryPill: { borderRadius: 8, backgroundColor: colors.accent, paddingHorizontal: 9, paddingVertical: 5 },
   categoryPillText: { color: colors.cardForeground, fontSize: 11, fontWeight: '600' },
+  postTitle: { color: colors.cardForeground, fontSize: 14, fontWeight: '700', marginBottom: 6 },
   postContent: { color: colors.cardForeground, fontSize: 14, lineHeight: 20, marginBottom: 10 },
   postFooter: {
     borderTopWidth: 1,

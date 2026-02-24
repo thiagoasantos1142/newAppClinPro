@@ -117,7 +117,9 @@ export default function HomeScreen({ navigation }) {
                     <Feather name="clock" size={14} color={colors.mutedForeground} />
                     <Text style={styles.muted}>{nextService.time_label || '-'}</Text>
                   </View>
-                  <Text style={styles.price}>{nextService.price_label || 'R$ 0,00'}</Text>
+                  <View style={styles.servicePriceWrap}>
+                    <Text style={styles.price}>{nextService.price_label || 'R$ 0,00'}</Text>
+                  </View>
                 </View>
               </>
             ) : (
@@ -129,14 +131,18 @@ export default function HomeScreen({ navigation }) {
           </AppCard>
 
           <View style={styles.gridRow}>
-            <AppCard style={styles.gridCard}>
-              <Text style={styles.muted}>Serviços Hoje</Text>
-              <Text style={styles.bigNumber}>{statsToday}</Text>
-            </AppCard>
-            <AppCard style={styles.gridCard}>
-              <Text style={styles.muted}>Esta Semana</Text>
-              <Text style={styles.bigNumber}>{statsWeek}</Text>
-            </AppCard>
+            <Pressable style={{ flex: 1 }} onPress={() => navigation.navigate('DailySchedule')}>
+              <AppCard style={styles.gridCard}>
+                <Text style={styles.muted}>Serviços Hoje</Text>
+                <Text style={styles.bigNumber}>{statsToday}</Text>
+              </AppCard>
+            </Pressable>
+            <Pressable style={{ flex: 1 }} onPress={() => navigation.navigate('WeeklySchedule')}>
+              <AppCard style={styles.gridCard}>
+                <Text style={styles.muted}>Esta Semana</Text>
+                <Text style={styles.bigNumber}>{statsWeek}</Text>
+              </AppCard>
+            </Pressable>
           </View>
 
           <View>
@@ -232,11 +238,14 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     paddingHorizontal: 16,
     paddingTop: 12,
+    paddingBottom: 12,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
+    gap: 12,
   },
-  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 },
+  servicePriceWrap: { alignItems: 'flex-end', minWidth: 88 },
   price: { color: colors.primary, fontWeight: '800', fontSize: 20 },
   emptyServiceState: { paddingHorizontal: 16, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', gap: 8 },
   gridRow: { flexDirection: 'row', gap: 12 },

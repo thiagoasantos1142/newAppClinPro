@@ -1,13 +1,90 @@
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { services } from '../data/mockData';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
+import { getServiceById } from '../services/modules/services.service';
+
+function formatDurationFromDateRange(startAt, endAt) {
+  if (!startAt || !endAt) return null;
+
+  const start = new Date(startAt);
+  const end = new Date(endAt);
+  const diffMs = end.getTime() - start.getTime();
+
+  if (!Number.isFinite(diffMs) || diffMs <= 0) return null;
+
+  const totalMinutes = Math.round(diffMs / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours > 0 && minutes > 0) return `${hours}h ${minutes}min`;
+  if (hours > 0) return `${hours}h`;
+  return `${totalMinutes}min`;
+}
 
 export default function ServiceDetailImprovedScreen({ route, navigation }) {
   const { serviceId } = route.params || {};
-  const service = services.find((item) => item.id === String(serviceId)) || services[0];
+  const [service, setService] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const loadService = async () => {
+        if (!serviceId) {
+          setError('Serviço não informado');
+          setLoading(false);
+          return;
+        }
+
+        setLoading(true);
+        setError(null);
+        try {
+          const data = await getServiceById(serviceId);
+          if (!isActive) return;
+          setService(data?.service || null);
+        } catch (err) {
+          if (!isActive) return;
+          setError(err?.response?.data?.message || err?.message || 'Erro ao carregar serviço');
+        } finally {
+          if (isActive) setLoading(false);
+        }
+      };
+
+      void loadService();
+
+      return () => {
+        isActive = false;
+      };
+    }, [serviceId])
+  );
+
+  const view = useMemo(() => {
+    if (!service) return null;
+    return {
+      priceLabel: service.price_label || 'R$ 0,00',
+      paymentNote: service.payment?.payout_note || 'Pagamento conforme política da plataforma',
+      serviceType: service.service_type || '-',
+      clientName: service.client?.name || service.client_name || 'Cliente',
+      clientPhone: service.client?.phone || 'Telefone não informado',
+      address: service.address || '-',
+      neighborhood: service.neighborhood || '-',
+      city: service.city || '-',
+      dateLabel: service.date_label || '-',
+      timeLabel: service.time_label || '-',
+      durationLabel:
+        formatDurationFromDateRange(service.start_at, service.end_at) ||
+        service.duration_label ||
+        '-',
+      description: service.description || 'Sem descrição informada.',
+      observations: service.observations,
+      distanceHeader: service.distance_label ? `${service.distance_label} de você` : 'Distância indisponível',
+    };
+  }, [service]);
 
   return (
     <View style={styles.container}>
@@ -18,117 +95,134 @@ export default function ServiceDetailImprovedScreen({ route, navigation }) {
           </Pressable>
           <View>
             <Text style={styles.headerTitle}>Detalhes do Serviço</Text>
-            <Text style={styles.headerSubtitle}>2.3 km de você</Text>
+            <Text style={styles.headerSubtitle}>{view?.distanceHeader || 'Carregando...'}</Text>
           </View>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.priceHero}>
-          <View style={styles.heroLabelRow}>
-            <Feather name="dollar-sign" size={16} color="rgba(255,255,255,0.8)" />
-            <Text style={styles.heroLabel}>Valor do Serviço</Text>
-          </View>
-          <Text style={styles.heroPrice}>{service.price}</Text>
-          <View style={styles.heroSubRow}>
-            <Feather name="credit-card" size={13} color="rgba(255,255,255,0.75)" />
-            <Text style={styles.heroSub}>Dinheiro após conclusão</Text>
-          </View>
+      {loading ? (
+        <View style={styles.centerState}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.stateText}>Carregando serviço...</Text>
         </View>
-
-        <View style={styles.typeBadge}>
-          <Text style={styles.typeBadgeText}>{service.type}</Text>
+      ) : error || !view ? (
+        <View style={styles.centerState}>
+          <Text style={[styles.stateText, styles.errorText]}>{error || 'Serviço não encontrado'}</Text>
+          <AppButton
+            title="Voltar"
+            variant="secondary"
+            onPress={() => navigation.goBack()}
+            style={{ marginTop: 12 }}
+          />
         </View>
-
-        <AppCard style={styles.card}>
-          <Text style={styles.cardTitle}>Cliente</Text>
-          <View style={styles.infoRow}>
-            <View style={styles.iconBox}>
-              <Feather name="user" size={18} color={colors.primary} />
+      ) : (
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.priceHero}>
+            <View style={styles.heroLabelRow}>
+              <Feather name="dollar-sign" size={16} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.heroLabel}>Valor do Serviço</Text>
             </View>
-            <View>
-              <Text style={styles.infoStrong}>{service.clientName}</Text>
-              <Text style={styles.infoMuted}>(11) 98765-4321</Text>
-            </View>
-          </View>
-        </AppCard>
-
-        <AppCard style={styles.card}>
-          <Text style={styles.cardTitle}>Endereço</Text>
-          <View style={styles.infoRow}>
-            <View style={styles.iconBox}>
-              <Feather name="map-pin" size={18} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.infoStrong}>{service.address}</Text>
-              <Text style={styles.infoMuted}>{service.neighborhood}</Text>
-              <Text style={styles.infoMuted}>{service.city}</Text>
+            <Text style={styles.heroPrice}>{view.priceLabel}</Text>
+            <View style={styles.heroSubRow}>
+              <Feather name="credit-card" size={13} color="rgba(255,255,255,0.75)" />
+              <Text style={styles.heroSub}>{view.paymentNote}</Text>
             </View>
           </View>
-        </AppCard>
 
-        <AppCard style={styles.card}>
-          <Text style={styles.cardTitle}>Quando</Text>
-          <View style={styles.infoStack}>
+          <View style={styles.typeBadge}>
+            <Text style={styles.typeBadgeText}>{view.serviceType}</Text>
+          </View>
+
+          <AppCard style={styles.card}>
+            <Text style={styles.cardTitle}>Cliente</Text>
             <View style={styles.infoRow}>
               <View style={styles.iconBox}>
-                <Feather name="calendar" size={18} color={colors.primary} />
+                <Feather name="user" size={18} color={colors.primary} />
               </View>
-              <View>
-                <Text style={styles.fieldLabel}>Data</Text>
-                <Text style={styles.infoStrong}>{service.date}</Text>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoStrong}>{view.clientName}</Text>
+                <Text style={styles.infoMuted}>{view.clientPhone}</Text>
               </View>
             </View>
+          </AppCard>
+
+          <AppCard style={styles.card}>
+            <Text style={styles.cardTitle}>Endereço</Text>
             <View style={styles.infoRow}>
               <View style={styles.iconBox}>
-                <Feather name="clock" size={18} color={colors.primary} />
+                <Feather name="map-pin" size={18} color={colors.primary} />
               </View>
-              <View>
-                <Text style={styles.fieldLabel}>Horário</Text>
-                <Text style={styles.infoStrong}>{service.time}</Text>
-              </View>
-            </View>
-            <View style={styles.infoRow}>
-              <View style={styles.iconBox}>
-                <Feather name="watch" size={18} color={colors.primary} />
-              </View>
-              <View>
-                <Text style={styles.fieldLabel}>Duração Estimada</Text>
-                <Text style={styles.infoStrong}>{service.duration}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.infoStrong}>{view.address}</Text>
+                <Text style={styles.infoMuted}>{view.neighborhood}</Text>
+                <Text style={styles.infoMuted}>{view.city}</Text>
               </View>
             </View>
-          </View>
-        </AppCard>
+          </AppCard>
 
-        <AppCard style={styles.card}>
-          <View style={styles.descriptionTitleRow}>
-            <Feather name="file-text" size={16} color={colors.primary} />
-            <Text style={styles.cardTitle}>Descrição do Serviço</Text>
-          </View>
-          <Text style={styles.description}>{service.description}</Text>
-        </AppCard>
+          <AppCard style={styles.card}>
+            <Text style={styles.cardTitle}>Quando</Text>
+            <View style={styles.infoStack}>
+              <View style={styles.infoRow}>
+                <View style={styles.iconBox}>
+                  <Feather name="calendar" size={18} color={colors.primary} />
+                </View>
+                <View>
+                  <Text style={styles.fieldLabel}>Data</Text>
+                  <Text style={styles.infoStrong}>{view.dateLabel}</Text>
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <View style={styles.iconBox}>
+                  <Feather name="clock" size={18} color={colors.primary} />
+                </View>
+                <View>
+                  <Text style={styles.fieldLabel}>Horário</Text>
+                  <Text style={styles.infoStrong}>{view.timeLabel}</Text>
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <View style={styles.iconBox}>
+                  <Feather name="watch" size={18} color={colors.primary} />
+                </View>
+                <View>
+                  <Text style={styles.fieldLabel}>Duração Estimada</Text>
+                  <Text style={styles.infoStrong}>{view.durationLabel}</Text>
+                </View>
+              </View>
+            </View>
+          </AppCard>
 
-        {!!service.observations && (
-          <View style={styles.warningBox}>
-            <Text style={styles.warningTitle}>Observações Importantes</Text>
-            <Text style={styles.warningText}>{service.observations}</Text>
-          </View>
-        )}
+          <AppCard style={styles.card}>
+            <View style={styles.descriptionTitleRow}>
+              <Feather name="file-text" size={16} color={colors.primary} />
+              <Text style={styles.cardTitle}>Descrição do Serviço</Text>
+            </View>
+            <Text style={styles.description}>{view.description}</Text>
+          </AppCard>
 
-        <AppButton
-          title="Aceitar Serviço"
-          onPress={() => navigation.goBack()}
-          left={<Feather name="check-circle" size={16} color="#FFFFFF" />}
-        />
-        <AppButton
-          title="Recusar"
-          variant="ghost"
-          textStyle={{ color: '#DC2626' }}
-          style={{ borderColor: '#FECACA', backgroundColor: '#FFFFFF' }}
-          onPress={() => navigation.goBack()}
-          left={<Feather name="x-circle" size={16} color="#DC2626" />}
-        />
-      </ScrollView>
+          {!!view.observations && (
+            <View style={styles.warningBox}>
+              <Text style={styles.warningTitle}>Observações Importantes</Text>
+              <Text style={styles.warningText}>{view.observations}</Text>
+            </View>
+          )}
+
+          <AppButton
+            title="Aceitar Serviço"
+            onPress={() => navigation.goBack()}
+            left={<Feather name="check-circle" size={16} color="#FFFFFF" />}
+          />
+          <AppButton
+            title="Recusar"
+            variant="ghost"
+            textStyle={{ color: '#DC2626' }}
+            style={{ borderColor: '#FECACA', backgroundColor: '#FFFFFF' }}
+            onPress={() => navigation.goBack()}
+            left={<Feather name="x-circle" size={16} color="#DC2626" />}
+          />
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -147,6 +241,9 @@ const styles = StyleSheet.create({
   },
   headerTitle: { color: '#FFF', fontSize: 22, fontWeight: '700' },
   headerSubtitle: { color: 'rgba(255,255,255,0.75)', fontSize: 12, marginTop: 2 },
+  centerState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  stateText: { marginTop: 10, color: colors.mutedForeground, fontSize: 14, textAlign: 'center' },
+  errorText: { color: colors.danger, marginTop: 0 },
   content: { padding: 16, gap: 12, paddingBottom: 28 },
   priceHero: {
     backgroundColor: colors.primary,
@@ -173,6 +270,7 @@ const styles = StyleSheet.create({
   cardTitle: { color: colors.cardForeground, fontSize: 16, fontWeight: '700', marginBottom: 10 },
   infoStack: { gap: 10 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  infoContent: { flex: 1, minWidth: 0 },
   iconBox: {
     width: 40,
     height: 40,
@@ -182,7 +280,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   fieldLabel: { color: colors.mutedForeground, fontSize: 11 },
-  infoStrong: { color: colors.cardForeground, fontSize: 14, fontWeight: '700' },
+  infoStrong: { color: colors.cardForeground, fontSize: 14, fontWeight: '700', flexShrink: 1 },
   infoMuted: { color: colors.mutedForeground, fontSize: 13, marginTop: 2 },
   descriptionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
   description: { color: colors.mutedForeground, fontSize: 14, lineHeight: 20 },
