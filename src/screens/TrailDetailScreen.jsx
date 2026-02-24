@@ -83,7 +83,7 @@ export default function TrailDetailScreen({ route, navigation }) {
   const onOpenLesson = (lesson) => {
     if (lesson.locked) return;
     if (lesson.isQuiz) {
-      navigation.navigate('Quiz', { trailId: trail?.id });
+      navigation.navigate('Quiz', { trailId: trail?.id, quizId: lesson.id });
       return;
     }
     navigation.navigate('VideoLesson', { trailId: trail?.id, lessonId: lesson.id });

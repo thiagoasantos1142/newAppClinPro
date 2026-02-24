@@ -5,8 +5,10 @@ import { Feather } from '@expo/vector-icons';
 import { AppButton, AppCard, Badge } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
 import { getProfile } from '../services/modules/profile.service';
+import { useAuth } from '../hooks/useAuth';
 
 export default function ProfileScreen({ navigation }) {
+  const { logout } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -105,7 +107,7 @@ export default function ProfileScreen({ navigation }) {
         <AppButton title="Conta Digital" variant="secondary" left={<Feather name="credit-card" size={16} color={colors.cardForeground} />} onPress={() => navigation.navigate('DigitalAccountOverview')} />
         <AppButton title="Reputação" variant="secondary" left={<Feather name="award" size={16} color={colors.cardForeground} />} onPress={() => navigation.navigate('ReputationOverview')} />
         <AppButton title="Financeiro" variant="secondary" left={<Feather name="bar-chart-2" size={16} color={colors.cardForeground} />} onPress={() => navigation.navigate('FinancialDashboard')} />
-        <AppButton title="Sair da Conta" variant="ghost" textStyle={{ color: colors.danger }} style={{ borderColor: '#FCA5A5' }} left={<Feather name="log-out" size={16} color={colors.danger} />} onPress={() => {}} />
+        <AppButton title="Sair da Conta" variant="ghost" textStyle={{ color: colors.danger }} style={{ borderColor: '#FCA5A5' }} left={<Feather name="log-out" size={16} color={colors.danger} />} onPress={() => void logout()} />
       </ScrollView>
     </View>
   );

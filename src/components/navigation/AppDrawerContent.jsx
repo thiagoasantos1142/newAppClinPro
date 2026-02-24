@@ -22,12 +22,13 @@ function Item({ label, icon, active, danger, onPress }) {
     </Pressable>
   );
 }
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/tokens';
+import { getProfile } from '../../services/modules/profile.service';
 
 function getActiveKeyFromNestedState(state) {
   const drawerRoute = state?.routes?.[state.index ?? 0];
@@ -43,6 +44,28 @@ export default function AppDrawerContent(props) {
   const [middleViewportHeight, setMiddleViewportHeight] = useState(0);
   const [middleContentHeight, setMiddleContentHeight] = useState(0);
   const [scrollY, setScrollY] = useState(0);
+  const [professionalName, setProfessionalName] = useState('Perfil');
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadProfileName = async () => {
+      try {
+        const profile = await getProfile();
+        if (!isActive) return;
+        setProfessionalName(profile?.name || 'Perfil');
+      } catch {
+        if (!isActive) return;
+        setProfessionalName('Perfil');
+      }
+    };
+
+    void loadProfileName();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const mainMenuItems = useMemo(
     () => [
@@ -114,7 +137,7 @@ export default function AppDrawerContent(props) {
             <Feather name="x" size={18} color="#FFFFFF" />
           </Pressable>
         </View>
-        <Text style={styles.name}>Maria Silva</Text>
+        <Text style={styles.name}>{professionalName}</Text>
         <View style={styles.badgeRow}>
           <Feather name="award" size={12} color="#FFFFFF" />
           <Text style={styles.badgeText}>Profissional Certificada</Text>

@@ -4,7 +4,7 @@ import { useOnboarding } from '../hooks/useOnboarding';
 import { getRouteForStep } from '../navigation/onboardingStepMap';
 
 export default function OnboardingExperienceScreen({ navigation }) {
-  const { status, completeStep, loading } = useOnboarding();
+  const { status, loading } = useOnboarding();
   const [selectedOption, setSelectedOption] = useState(null);
   const [error, setError] = useState(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -40,13 +40,12 @@ export default function OnboardingExperienceScreen({ navigation }) {
     if (!selectedOption) return;
     try {
       setError(null);
-      await completeStep('profile', {});
       navigation.navigate('OnboardingGoal');
     } catch (err) {
       const message = err?.response?.data?.message || err?.message || 'Erro ao salvar resposta.';
       setError(message);
     }
-  }, [selectedOption, completeStep, navigation]);
+  }, [selectedOption, navigation]);
 
   return (
     <QuestionCard

@@ -14,10 +14,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '../components/ui.jsx';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 import { useOnboarding } from '../hooks/useOnboarding';
+import { useQuestionsFlow } from '../hooks/useQuestionsFlow';
 import { getRouteForStep } from '../navigation/onboardingStepMap';
 
 export default function OnboardingProfileScreen({ navigation }) {
   const { status, completeStep, loading } = useOnboarding();
+  const { questionsData, resetQuestionsData } = useQuestionsFlow();
   const insets = useSafeAreaInsets();
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
@@ -85,21 +87,50 @@ export default function OnboardingProfileScreen({ navigation }) {
   const progress = calculateProgress();
   const canContinue = progress >= 75;
 
+  const experienceYearsFromQuestions = useMemo(() => {
+    switch (questionsData?.experience) {
+      case 'iniciante':
+        return 0;
+      case 'menos-1-ano':
+        return 1;
+      case '1-3-anos':
+        return 2;
+      case 'mais-3-anos':
+        return 4;
+      default:
+        return 0;
+    }
+  }, [questionsData?.experience]);
+
   const handleContinue = useCallback(async () => {
     if (!canContinue) return;
     try {
+      const selectedSpecialties = services
+        .filter((service) => selectedServices.includes(service.id))
+        .map((service) => service.label.replace('\n', ' '));
+
       await completeStep('profile', {
-        hasPhoto,
-        region: selectedRegion,
-        services: selectedServices,
         bio,
-        progress,
+        service_region: selectedRegion,
+        specialties: selectedSpecialties,
+        experience_years: experienceYearsFromQuestions,
       });
+      resetQuestionsData();
       navigation.navigate('OnboardingFirstAction');
     } catch (err) {
       console.error('Error completing profile step:', err);
     }
-  }, [canContinue, completeStep, hasPhoto, selectedRegion, selectedServices, bio, progress, navigation]);
+  }, [
+    bio,
+    canContinue,
+    completeStep,
+    experienceYearsFromQuestions,
+    navigation,
+    resetQuestionsData,
+    selectedRegion,
+    selectedServices,
+    services,
+  ]);
 
   if (isInitialLoading) {
     return (

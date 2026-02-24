@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { Feather } from '@expo/vector-icons';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
-import { acceptServiceById, getServiceById } from '../services/modules/services.service';
+import { acceptServiceById, getServiceById, updateServiceStatus } from '../services/modules/services.service';
 
 function formatDurationFromDateRange(startAt, endAt) {
   if (!startAt || !endAt) return null;
@@ -30,6 +30,7 @@ export default function ServiceDetailImprovedScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [accepting, setAccepting] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -84,6 +85,7 @@ export default function ServiceDetailImprovedScreen({ route, navigation }) {
       description: service.description || 'Sem descrição informada.',
       observations: service.observations,
       distanceHeader: service.distance_label ? `${service.distance_label} de você` : 'Distância indisponível',
+      status: service.status || 'available',
     };
   }, [service]);
 
@@ -102,6 +104,23 @@ export default function ServiceDetailImprovedScreen({ route, navigation }) {
       setAccepting(false);
     }
   }, [accepting, navigation, serviceId]);
+
+  const handleDecline = useCallback(async () => {
+    if (!serviceId || updatingStatus) return;
+    setUpdatingStatus(true);
+    try {
+      const response = await updateServiceStatus(serviceId, { status: 'declined' });
+      setService((prev) =>
+        prev ? { ...prev, status: response?.status || 'declined' } : prev
+      );
+      Alert.alert('Sucesso', 'Serviço recusado.');
+      navigation.goBack();
+    } catch (err) {
+      Alert.alert('Erro', err?.response?.data?.message || err?.message || 'Não foi possível recusar o serviço.');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  }, [navigation, serviceId, updatingStatus]);
 
   return (
     <View style={styles.container}>
@@ -148,6 +167,7 @@ export default function ServiceDetailImprovedScreen({ route, navigation }) {
 
           <View style={styles.typeBadge}>
             <Text style={styles.typeBadgeText}>{view.serviceType}</Text>
+            <Text style={styles.typeBadgeStatus}>{String(view.status).replace('_', ' ')}</Text>
           </View>
 
           <AppCard style={styles.card}>
@@ -234,9 +254,10 @@ export default function ServiceDetailImprovedScreen({ route, navigation }) {
           <AppButton
             title="Recusar"
             variant="ghost"
+            disabled={updatingStatus}
             textStyle={{ color: '#DC2626' }}
             style={{ borderColor: '#FECACA', backgroundColor: '#FFFFFF' }}
-            onPress={() => navigation.goBack()}
+            onPress={handleDecline}
             left={<Feather name="x-circle" size={16} color="#DC2626" />}
           />
         </ScrollView>
@@ -282,8 +303,17 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   typeBadgeText: { color: colors.primary, fontWeight: '700', fontSize: 13 },
+  typeBadgeStatus: {
+    color: colors.mutedForeground,
+    fontWeight: '600',
+    fontSize: 12,
+    textTransform: 'capitalize',
+  },
   card: { borderWidth: 1, borderColor: colors.border },
   cardTitle: { color: colors.cardForeground, fontSize: 16, fontWeight: '700', marginBottom: 10 },
   infoStack: { gap: 10 },

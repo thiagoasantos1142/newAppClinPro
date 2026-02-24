@@ -1,9 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AppButton, AppCard, ProgressBar } from '../components/ui.jsx';
-import { getTrainingLessonById } from '../services/modules/training.service';
+import { getTrainingLessonById, saveTrainingLessonProgress } from '../services/modules/training.service';
 import { colors } from '../theme/tokens';
 
 export default function VideoLessonScreen({ route, navigation }) {
@@ -13,6 +13,7 @@ export default function VideoLessonScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [localProgress, setLocalProgress] = useState(null);
+  const [savingProgress, setSavingProgress] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -59,6 +60,24 @@ export default function VideoLessonScreen({ route, navigation }) {
     if (!lesson?.description) return 'Sem descrição informada.';
     return lesson.description;
   }, [lesson?.description]);
+
+  const handleMarkComplete = useCallback(async () => {
+    if (!lesson?.id || savingProgress) return;
+    setSavingProgress(true);
+    try {
+      await saveTrainingLessonProgress(lesson.id, { progress_percent: 100, completed: true });
+      setLocalProgress(100);
+      setData((prev) => ({
+        ...prev,
+        lesson: prev?.lesson ? { ...prev.lesson, progress_percent: 100 } : prev?.lesson,
+      }));
+      Alert.alert('Sucesso', 'Progresso da aula atualizado.');
+    } catch (err) {
+      Alert.alert('Erro', err?.response?.data?.message || err?.message || 'Não foi possível salvar o progresso.');
+    } finally {
+      setSavingProgress(false);
+    }
+  }, [lesson?.id, savingProgress]);
 
   return (
     <View style={styles.container}>
@@ -121,8 +140,9 @@ export default function VideoLessonScreen({ route, navigation }) {
           </AppCard>
 
           <AppButton
-            title="Marcar como Concluída"
-            onPress={() => setLocalProgress(100)}
+            title={savingProgress ? 'Salvando...' : 'Marcar como Concluída'}
+            onPress={handleMarkComplete}
+            disabled={savingProgress}
             left={<Feather name="check-circle" size={16} color="#FFF" />}
           />
 
@@ -139,7 +159,7 @@ export default function VideoLessonScreen({ route, navigation }) {
             <AppButton
               title="Ir para Avaliação"
               variant="secondary"
-              onPress={() => navigation.navigate('Quiz', { trailId: resolvedTrailId })}
+              onPress={() => navigation.navigate('Quiz', { trailId: resolvedTrailId, quizId: nextLesson.id })}
               left={<Feather name="award" size={16} color={colors.cardForeground} />}
             />
           )}

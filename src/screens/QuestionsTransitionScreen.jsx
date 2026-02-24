@@ -26,6 +26,52 @@ export default function QuestionsTransitionScreen({ navigation }) {
   const completedSteps = status?.steps ? Object.values(status.steps).filter(Boolean).length : 0;
   const currentStepNumber = Math.min(completedSteps + 1, totalSteps);
 
+  const buildQuestionsPayload = useCallback((raw) => {
+    const clients = raw?.clients;
+    const experience = raw?.experience;
+    const goal = raw?.goal;
+    const mei = raw?.mei;
+
+    const workAreas = ['Residencial'];
+    if (clients === 'varios' || clients === 'alguns') {
+      workAreas.push('Comercial');
+    }
+
+    const availabilityByExperience = {
+      iniciante: {
+        availability_label: 'Disponibilidade variável',
+        availability_days: [],
+      },
+      'menos-1-ano': {
+        availability_label: '3 a 4 dias',
+        availability_days: ['monday', 'tuesday', 'wednesday', 'thursday'],
+      },
+      '1-3-anos': {
+        availability_label: '5 dias por semana',
+        availability_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+      },
+      'mais-3-anos': {
+        availability_label: '5 dias por semana',
+        availability_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+      },
+    };
+
+    const baseAvailability = availabilityByExperience[experience] || {
+      availability_label: 'Disponibilidade variável',
+      availability_days: [],
+    };
+
+    const extras = [];
+    if (goal) extras.push(`meta:${goal}`);
+    if (mei) extras.push(`mei:${mei}`);
+
+    return {
+      work_areas: [...new Set([...workAreas, ...extras])],
+      availability_label: baseAvailability.availability_label,
+      availability_days: baseAvailability.availability_days,
+    };
+  }, []);
+
   useEffect(() => {
     if (!status) {
       setIsInitialLoading(true);
@@ -44,13 +90,13 @@ export default function QuestionsTransitionScreen({ navigation }) {
   const handleContinue = useCallback(async () => {
     try {
       setError(null);
-      await completeStep('questions', questionsData);
+      await completeStep('questions', buildQuestionsPayload(questionsData));
       resetQuestionsData();
     } catch (err) {
       const message = err?.response?.data?.message || err?.message || 'Erro ao continuar.';
       setError(message);
     }
-  }, [questionsData, completeStep, resetQuestionsData]);
+  }, [questionsData, completeStep, resetQuestionsData, buildQuestionsPayload]);
 
   if (isInitialLoading) {
     return (

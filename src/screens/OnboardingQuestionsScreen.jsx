@@ -36,6 +36,25 @@ export default function OnboardingQuestionsScreen({ navigation }) {
     { value: 'variavel', label: 'Varia muito' },
   ];
 
+  const availabilityPayloadMap = {
+    '1-2': {
+      availability_label: '1 a 2 dias por semana',
+      availability_days: ['monday', 'tuesday'],
+    },
+    '3-4': {
+      availability_label: '3 a 4 dias por semana',
+      availability_days: ['monday', 'tuesday', 'wednesday', 'thursday'],
+    },
+    '5-mais': {
+      availability_label: '5 dias ou mais por semana',
+      availability_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+    },
+    variavel: {
+      availability_label: 'Disponibilidade variável',
+      availability_days: [],
+    },
+  };
+
   useEffect(() => {
     if (!status) return;
     if (status.completed) {
@@ -64,7 +83,10 @@ export default function OnboardingQuestionsScreen({ navigation }) {
       if (!selectedOption) {
         return;
       }
-      await completeStep('questions', {});
+      await completeStep('questions', {
+        work_areas: ['Residencial'],
+        ...(availabilityPayloadMap[selectedOption] || availabilityPayloadMap.variavel),
+      });
       navigation.navigate('OnboardingTransition');
     } catch (err) {
       const message = err?.response?.data?.message || err?.message || 'Nao foi possivel concluir esta etapa.';

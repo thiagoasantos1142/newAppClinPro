@@ -1,14 +1,33 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppButton, AppCard } from '../components/ui.jsx';
-import { quizQuestions } from '../data/mockData';
 import { colors } from '../theme/tokens';
 
 export default function QuizResultScreen({ route, navigation }) {
-  const { trailId, score = 0, total = 1, answers = {} } = route.params || {};
-  const percentage = Math.round((score / total) * 100);
-  const passed = percentage >= 70;
+  const { trailId, quizId, result, questions = [], selectedAnswers = {} } = route.params || {};
+
+  const score = Number(result?.score || 0);
+  const total = Number(result?.total || questions.length || 1);
+  const percentage = Math.round(Number(result?.percentage ?? ((score / Math.max(total, 1)) * 100)));
+  const passed = Boolean(result?.passed ?? percentage >= 70);
+  const certificateId = result?.certificate_id;
+  const answersReview = Array.isArray(result?.answers_review) ? result.answers_review : [];
+
+  const reviewItems = useMemo(() => {
+    if (answersReview.length > 0) {
+      return answersReview.map((r, idx) => ({
+        key: String(r.question_id ?? idx),
+        label: `Questão ${idx + 1}`,
+        correct: Boolean(r.correct),
+      }));
+    }
+    return questions.map((q, idx) => {
+      const selected = selectedAnswers[q.id];
+      const correctIndex = q.correct_option_index ?? q.correctAnswer;
+      return { key: String(q.id), label: `Questão ${idx + 1}`, correct: selected === correctIndex };
+    });
+  }, [answersReview, questions, selectedAnswers]);
 
   return (
     <View style={styles.container}>
@@ -25,35 +44,36 @@ export default function QuizResultScreen({ route, navigation }) {
           <Text style={styles.centerMuted}>Sua Pontuação</Text>
           <Text style={styles.score}>{score}/{total}</Text>
           <View style={styles.percentBadge}><Text style={styles.percentText}>{percentage}%</Text></View>
-          <Text style={[styles.centerMuted, { marginTop: 8 }]}>Nota mínima: 70%</Text>
+          <Text style={[styles.centerMuted, { marginTop: 8 }]}>Nota mínima: {result?.passing_score_percent || 70}%</Text>
         </AppCard>
 
         <AppCard>
           <Text style={styles.reviewTitle}>Revisão das Respostas</Text>
           <View style={{ gap: 8 }}>
-            {quizQuestions.map((q, idx) => {
-              const correct = answers[idx] === q.correctAnswer;
-              return (
-                <View key={q.id} style={[styles.reviewItem, correct ? styles.correct : styles.wrong]}>
-                  <Feather name={correct ? 'check-circle' : 'x-circle'} size={16} color={correct ? colors.primary : '#DC2626'} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.centerMuted}>Questão {idx + 1}</Text>
-                    <Text style={styles.reviewQuestion}>{q.question}</Text>
-                  </View>
+            {reviewItems.map((item) => (
+              <View key={item.key} style={[styles.reviewItem, item.correct ? styles.correct : styles.wrong]}>
+                <Feather name={item.correct ? 'check-circle' : 'x-circle'} size={16} color={item.correct ? colors.primary : '#DC2626'} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.centerMuted}>{item.label}</Text>
+                  <Text style={styles.reviewQuestion}>{item.correct ? 'Resposta correta' : 'Resposta incorreta'}</Text>
                 </View>
-              );
-            })}
+              </View>
+            ))}
           </View>
         </AppCard>
 
         {passed ? (
           <>
-            <AppButton title="Ver Certificado" onPress={() => navigation.replace('Certificate', { trailId })} left={<MaterialCommunityIcons name="certificate-outline" size={16} color="#FFF" />} />
+            <AppButton
+              title="Ver Certificado"
+              onPress={() => navigation.replace('Certificate', { trailId, certificateId })}
+              left={<MaterialCommunityIcons name="certificate-outline" size={16} color="#FFF" />}
+            />
             <AppButton title="Voltar para a Trilha" variant="secondary" onPress={() => navigation.navigate('TrailDetail', { trailId })} />
           </>
         ) : (
           <>
-            <AppButton title="Tentar Novamente" onPress={() => navigation.replace('Quiz', { trailId })} left={<Feather name="rotate-ccw" size={16} color="#FFF" />} />
+            <AppButton title="Tentar Novamente" onPress={() => navigation.replace('Quiz', { trailId, quizId })} left={<Feather name="rotate-ccw" size={16} color="#FFF" />} />
             <AppButton title="Revisar Conteúdo" variant="secondary" onPress={() => navigation.navigate('TrailDetail', { trailId })} />
           </>
         )}
