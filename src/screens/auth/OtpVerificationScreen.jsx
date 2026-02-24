@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { AppButton, AppCard } from '../../components/ui.jsx';
 import { colors, radius, spacing, typography } from '../../theme/tokens.js';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function OtpVerificationScreen({ navigation, route }) {
   const { verifyOtp, isAuthenticated } = useAuth();
@@ -81,7 +81,7 @@ export default function OtpVerificationScreen({ navigation, route }) {
 
   useEffect(() => {
     // Quando todos os dígitos estão preenchidos pelo shortcut, foca o último input
-    if (otp.join('').length === 6 && otp.every((d) => d)) {
+    if (otp.join('').length === 6 && otp.every(d => d)) {
       otpRefs.current['otp-5']?.focus();
     }
   }, [otp]);
@@ -114,9 +114,9 @@ export default function OtpVerificationScreen({ navigation, route }) {
             {otp.map((digit, index) => (
               <TextInput
                 key={index}
-                ref={(el) => (otpRefs.current[`otp-${index}`] = el)}
+                ref={el => (otpRefs.current[`otp-${index}`] = el)}
                 value={digit}
-                onChangeText={(value) => {
+                onChangeText={value => {
                   if (index === 0 && value.length === 6) {
                     setOtp(value.split(''));
                     setTimeout(() => {
@@ -126,7 +126,7 @@ export default function OtpVerificationScreen({ navigation, route }) {
                     handleOtpChange(index, value);
                   }
                 }}
-                onKeyPress={(e) => handleOtpKeyDown(index, e)}
+                onKeyPress={e => handleOtpKeyDown(index, e)}
                 keyboardType="number-pad"
                 maxLength={1}
                 style={styles.otpInput}
@@ -138,7 +138,7 @@ export default function OtpVerificationScreen({ navigation, route }) {
           <AppButton
             title={loading ? 'Entrando...' : 'Entrar'}
             onPress={handleSubmit}
-            disabled={loading || otp.some((d) => !d)}
+            disabled={loading || otp.some(d => !d)}
             style={{ marginTop: spacing.md }}
             textStyle={undefined}
             left={undefined}

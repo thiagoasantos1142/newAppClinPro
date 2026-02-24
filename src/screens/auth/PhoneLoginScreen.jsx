@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { AppButton, AppCard } from '../../components/ui.jsx';
 import { colors, radius, spacing, typography } from '../../theme/tokens.js';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function PhoneLoginScreen({ navigation }) {
   const { requestOtp } = useAuth();

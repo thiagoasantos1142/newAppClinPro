@@ -1,11 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { ScrollView, Text } from 'react-native';
-
-interface BackendTestState {
-  loading: boolean;
-  error: string | null;
-  data: unknown;
-}
+import { useFocusEffect } from '@react-navigation/native';
 
 const FALLBACK_URL = 'http://192.168.0.252:8000/api/dev/test-user';
 
@@ -16,10 +11,13 @@ export default function BackendConnectionTestScreen() {
     data: null,
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setState({ loading: true, error: null, data: null });
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const fetchData = async () => {
+        try {
+          setState({ loading: true, error: null, data: null });
 
           try {
             const module = await import('../../services/api');
@@ -33,17 +31,18 @@ export default function BackendConnectionTestScreen() {
             console.warn('BackendConnectionTestScreen fallback to fetch:', innerError);
           }
 
-        const res = await fetch(FALLBACK_URL);
-        if (!res.ok) {
-          throw new Error(`Request failed with status ${res.status}`);
+          const res = await fetch(FALLBACK_URL);
+          if (!res.ok) {
+            throw new Error(`Request failed with status ${res.status}`);
+          }
+          const data = await res.json();
+          if (isActive) setState({ loading: false, error: null, data });
+        } catch (err) {
+          if (!isActive) return;
+          const message = err instanceof Error ? err.message : 'Unknown error';
+          setState({ loading: false, error: message, data: null });
         }
-        const data = await res.json();
-        setState({ loading: false, error: null, data });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        setState({ loading: false, error: message, data: null });
-      }
-    };
+      };
 
       void fetchData();
 

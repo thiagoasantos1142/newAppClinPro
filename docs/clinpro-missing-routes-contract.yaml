@@ -1,0 +1,982 @@
+version: 1
+generated_at: "2026-02-23"
+project: "ClinPro mobile app"
+purpose: "Contrato das rotas faltantes (gap) com base no board FigJam e no que o front renderiza/espera hoje."
+sources:
+  figjam_board: "https://www.figma.com/board/nNQr6hrfFdt2kzu9Wircp1/ClinPro---Telas-x-Rotas-Backend--Gap-?node-id=0-1"
+  frontend_codebase: "src/"
+notes:
+  - "Rotas marcadas como 'existe' no board foram excluidas deste arquivo."
+  - "Campos e formatos abaixo sao inferidos a partir das telas e mocks atuais; backend pode enriquecer mantendo retrocompatibilidade."
+  - "Padrao sugerido: respostas em JSON; datas em ISO-8601; valores monetarios numericos (centavos ou decimal) + campos formatados opcionais."
+
+existing_routes_detected:
+  - "POST /clinpro/auth/request-otp"
+  - "POST /clinpro/auth/verify-otp"
+  - "GET /ping"
+  - "GET /clinpro/access-summary"
+  - "GET /clinpro/profile"
+  - "PUT /clinpro/profile"
+  - "GET /dev/test-user"
+
+conventions:
+  auth:
+    required: true
+    header: "Authorization: Bearer <token>"
+  response_envelope:
+    preferred: false
+    note: "O front atual consome respostas cruas em varias rotas. Se usar envelope, manter shape interno consistente e adaptar client."
+  common_error_shape:
+    status: 400
+    body:
+      error: "string"
+      message: "string"
+      code: "string"
+      details: {}
+
+shared_schemas:
+  ServiceSummary:
+    id: "string"
+    date_label: "Quarta, 19 Fev"
+    start_at: "2026-02-19T14:00:00-03:00"
+    end_at: "2026-02-19T16:30:00-03:00"
+    time_label: "14:00 - 16:30"
+    client_name: "Joao Santos"
+    neighborhood: "Jardim Paulista"
+    address: "Rua das Flores, 123"
+    city: "Sao Paulo - SP"
+    service_type: "Limpeza Residencial"
+    duration_minutes: 150
+    duration_label: "2h 30min"
+    price_amount: 150.00
+    price_label: "R$ 150,00"
+    distance_km: 2.3
+    distance_label: "2.3 km"
+    status: "available"
+  ServiceDetail:
+    extends: "ServiceSummary"
+    client:
+      name: "Joao Santos"
+      phone: "(11) 98765-4321"
+    description: "Limpeza completa..."
+    observations: "Preferencia por produtos sem cheiro forte."
+    payment:
+      payout_timing: "after_completion"
+      payout_note: "Dinheiro apos conclusao"
+  TrainingTrail:
+    id: "string"
+    title: "Fundamentos de Limpeza Profissional"
+    description: "Aprenda tecnicas basicas e essenciais"
+    lessons_count: 8
+    duration_label: "2h 30min"
+    progress_percent: 75
+    completed_lessons: 6
+    color: "#3B82F6"
+    certificate_available: false
+  TrainingLesson:
+    id: "string"
+    title: "Introducao a Limpeza Profissional"
+    duration_label: "12min"
+    completed: true
+    locked: false
+    is_quiz: false
+  CommunityPostSummary:
+    id: "string"
+    author:
+      id: "string"
+      name: "Maria Silva"
+      avatar_emoji: "👩"
+      region: "Sao Paulo, SP"
+      level: "N3"
+    category: "Conquistas"
+    content: "Acabei de completar 100 servicos!"
+    likes_count: 45
+    comments_count: 12
+    liked_by_me: false
+    saved_by_me: false
+    created_at: "2026-02-23T10:00:00-03:00"
+    time_ago_label: "Ha 2 horas"
+  FinanceTransaction:
+    id: "string"
+    type: "income"
+    title: "Servico Maria Fernandes"
+    amount: 130.00
+    amount_label: "+ R$ 130,00"
+    status: "paid"
+    method: "PIX"
+    date: "2026-02-19"
+  VerificationItem:
+    key: "official_document"
+    label: "Documento oficial"
+    status: "approved"
+    status_label: "Aprovado"
+
+missing_routes:
+  auth:
+    - method: POST
+      path: /clinpro/auth/logout
+      frontend_screens: ["ProfileScreen (acao 'Sair da Conta')"]
+      request:
+        body:
+          refresh_token: "string (opcional, se houver rotacao)"
+          reason: "user_logout (opcional)"
+      responses:
+        "200":
+          body:
+            success: true
+            message: "Logout realizado"
+        "204":
+          body: null
+
+    - method: POST
+      path: /clinpro/auth/refresh
+      frontend_screens: ["AuthContext (futuro suporte a renovacao de sessao)"]
+      request:
+        body:
+          refresh_token: "string"
+      responses:
+        "200":
+          body:
+            token: "jwt-access-token"
+            refresh_token: "jwt-refresh-token"
+            expires_in: 3600
+            user:
+              id: "string"
+              name: "Maria Silva"
+              roles: ["clinpro"]
+
+  home:
+    - method: GET
+      path: /clinpro/home/dashboard
+      frontend_screens: ["HomeScreen", "HomeTab"]
+      request:
+        query:
+          date: "YYYY-MM-DD (opcional)"
+      responses:
+        "200":
+          body:
+            greeting_name: "Maria"
+            earnings:
+              month_amount: 3450.00
+              month_amount_label: "R$ 3.450,00"
+              variation_percent: 12
+              variation_label: "+12% vs mes anterior"
+            next_service:
+              id: "svc_1"
+              date_label: "Quarta-feira, 19 Fev"
+              client_name: "Maria Fernandes"
+              address: "Rua das Acacias, 456"
+              time_label: "09:00 - 11:30"
+              price_label: "R$ 130,00"
+            stats:
+              services_today: 3
+              services_week: 12
+            quick_access:
+              training_enabled: true
+              digital_account_enabled: true
+
+  services:
+    - method: GET
+      path: /clinpro/services/available
+      frontend_screens: ["AvailableServices", "AvailableServicesImproved"]
+      request:
+        query:
+          max_distance_km: 5
+          service_types: ["Limpeza Residencial", "Limpeza Profunda"]
+          min_price: 0
+          date: "YYYY-MM-DD (opcional)"
+          page: 1
+          limit: 20
+      responses:
+        "200":
+          body:
+            items:
+              - $ref: "shared_schemas/ServiceSummary"
+            pagination:
+              page: 1
+              limit: 20
+              total: 3
+
+    - method: GET
+      path: /clinpro/services/{id}
+      frontend_screens: ["ServiceDetail", "ServiceDetailImproved"]
+      request:
+        path_params:
+          id: "string"
+      responses:
+        "200":
+          body:
+            service:
+              $ref: "shared_schemas/ServiceDetail"
+
+    - method: POST
+      path: /clinpro/services/{id}/accept
+      frontend_screens: ["AvailableServicesImproved (botao Aceitar)", "ServiceDetailImproved (botao Aceitar Servico)"]
+      request:
+        path_params:
+          id: "string"
+        body:
+          accepted_from: "list|detail (opcional)"
+      responses:
+        "200":
+          body:
+            service_id: "string"
+            status: "accepted"
+            message: "Servico aceito com sucesso"
+            my_service:
+              id: "string"
+              status: "accepted"
+
+    - method: GET
+      path: /clinpro/services/my
+      frontend_screens: ["MyServices"]
+      request:
+        query:
+          status: "accepted|in_progress|scheduled (opcional)"
+          from: "YYYY-MM-DD (opcional)"
+          to: "YYYY-MM-DD (opcional)"
+      responses:
+        "200":
+          body:
+            in_progress_count: 4
+            today:
+              - id: "svc_11"
+                time_label: "09:00 - 11:30"
+                client_name: "Maria Fernandes"
+            upcoming:
+              - id: "svc_12"
+                date_label: "Amanha 10:00"
+                client_name: "Ana Costa"
+
+    - method: GET
+      path: /clinpro/services/history
+      frontend_screens: ["ServiceHistory"]
+      request:
+        query:
+          month: "2026-02 (opcional)"
+          page: 1
+          limit: 20
+      responses:
+        "200":
+          body:
+            groups:
+              - title: "Fevereiro 2026"
+                items:
+                  - id: "svc_h1"
+                    label: "19 Fev - Limpeza Residencial"
+                    amount_label: "R$ 150,00"
+                    amount: 150.00
+                    status: "completed"
+
+    - method: PATCH
+      path: /clinpro/services/{id}/status
+      frontend_screens: ["Fluxo de servico (gap futuro)"]
+      request:
+        path_params:
+          id: "string"
+        body:
+          status: "accepted|in_progress|completed|cancelled|declined"
+          reason: "string (opcional, relevante para cancel/decline)"
+      responses:
+        "200":
+          body:
+            service_id: "string"
+            previous_status: "accepted"
+            status: "in_progress"
+            updated_at: "2026-02-23T15:00:00-03:00"
+
+  schedule:
+    - method: GET
+      path: /clinpro/schedule/weekly
+      frontend_screens: ["WeeklySchedule"]
+      request:
+        query:
+          week_start: "YYYY-MM-DD (opcional)"
+      responses:
+        "200":
+          body:
+            week_start: "2026-02-16"
+            week_end: "2026-02-22"
+            workload:
+              total_hours: 32
+              total_hours_label: "32h"
+              occupancy_percent: 72
+              note: "5 dias com servicos agendados"
+            days:
+              - date: "2026-02-16"
+                weekday_label: "Segunda"
+                services_count: 3
+                services_count_label: "3 servicos"
+
+    - method: GET
+      path: /clinpro/schedule/daily
+      frontend_screens: ["DailySchedule"]
+      request:
+        query:
+          date: "YYYY-MM-DD"
+      responses:
+        "200":
+          body:
+            date: "2026-02-19"
+            appointments:
+              - id: "ap_1"
+                start_at: "2026-02-19T09:00:00-03:00"
+                end_at: "2026-02-19T11:00:00-03:00"
+                time_label: "09:00 - 11:00"
+                type: "service"
+                title: "Maria Fernandes"
+              - id: "ap_2"
+                time_label: "12:00 - 13:00"
+                type: "travel"
+                title: "Deslocamento"
+
+    - method: GET
+      path: /clinpro/schedule/blocks
+      frontend_screens: ["BlockTime"]
+      request:
+        query:
+          from: "YYYY-MM-DD (opcional)"
+          to: "YYYY-MM-DD (opcional)"
+      responses:
+        "200":
+          body:
+            items:
+              - id: "blk_1"
+                start_at: "2026-02-20T13:00:00-03:00"
+                end_at: "2026-02-20T15:00:00-03:00"
+                label: "20 Fev 13:00 - 15:00"
+                reason: "Compromisso pessoal"
+
+    - method: POST
+      path: /clinpro/schedule/blocks
+      frontend_screens: ["BlockTime (acao 'Salvar Bloqueio')"]
+      request:
+        body:
+          start_at: "2026-02-20T13:00:00-03:00"
+          end_at: "2026-02-20T15:00:00-03:00"
+          reason: "Compromisso pessoal"
+      responses:
+        "201":
+          body:
+            id: "blk_123"
+            start_at: "2026-02-20T13:00:00-03:00"
+            end_at: "2026-02-20T15:00:00-03:00"
+            reason: "Compromisso pessoal"
+
+    - method: DELETE
+      path: /clinpro/schedule/blocks/{id}
+      frontend_screens: ["BlockTime (remoção futura)"]
+      request:
+        path_params:
+          id: "string"
+      responses:
+        "204":
+          body: null
+
+    - method: GET
+      path: /clinpro/workload/overview
+      frontend_screens: ["WorkloadOverview"]
+      request:
+        query:
+          period: "week|month (opcional, default=week)"
+          reference_date: "YYYY-MM-DD (opcional)"
+      responses:
+        "200":
+          body:
+            occupancy_percent: 68
+            indicators:
+              hours_worked_label: "32h"
+              completed_services: 12
+              avg_service_duration_label: "2h 40min"
+
+  training:
+    - method: GET
+      path: /clinpro/training/trails
+      frontend_screens: ["TrainingList"]
+      request:
+        query:
+          include_recommended: true
+      responses:
+        "200":
+          body:
+            journey:
+              completed_lessons: 15
+              total_lessons: 29
+              progress_percent: 52
+            trails:
+              - $ref: "shared_schemas/TrainingTrail"
+            recommended_lessons:
+              - id: "r1"
+                title: "Limpeza de Vidros"
+                duration_label: "45min"
+                emoji: "🪟"
+
+    - method: GET
+      path: /clinpro/training/trails/{id}
+      frontend_screens: ["TrailDetail"]
+      request:
+        path_params:
+          id: "string"
+      responses:
+        "200":
+          body:
+            trail:
+              $ref: "shared_schemas/TrainingTrail"
+            lessons:
+              - $ref: "shared_schemas/TrainingLesson"
+
+    - method: GET
+      path: /clinpro/training/lessons/{id}
+      frontend_screens: ["VideoLesson"]
+      request:
+        path_params:
+          id: "string"
+      responses:
+        "200":
+          body:
+            lesson:
+              id: "string"
+              trail_id: "string"
+              title: "Introducao a Limpeza Profissional"
+              description: "Aprenda as melhores tecnicas..."
+              video_url: "https://..."
+              duration_label: "12min"
+              progress_percent: 45
+              key_points:
+                - "Escolha a ferramenta adequada..."
+                - "Mantenha sequencia logica..."
+              next_lesson:
+                id: "string"
+                title: "Ferramentas Essenciais"
+                is_quiz: false
+
+    - method: POST
+      path: /clinpro/training/lessons/{id}/progress
+      frontend_screens: ["VideoLesson (Marcar como Concluida)"]
+      request:
+        path_params:
+          id: "string"
+        body:
+          progress_percent: 100
+          completed: true
+      responses:
+        "200":
+          body:
+            lesson_id: "string"
+            progress_percent: 100
+            completed: true
+            trail_progress_percent: 75
+
+    - method: GET
+      path: /clinpro/training/quizzes/{id}
+      frontend_screens: ["Quiz"]
+      request:
+        path_params:
+          id: "string"
+      responses:
+        "200":
+          body:
+            quiz:
+              id: "string"
+              trail_id: "string"
+              passing_score_percent: 70
+              questions:
+                - id: 1
+                  question: "Qual e a primeira etapa...?"
+                  options:
+                    - "Passar pano no chao"
+                    - "Remover objetos e organizar o espaco"
+
+    - method: POST
+      path: /clinpro/training/quizzes/{id}/submit
+      frontend_screens: ["Quiz", "QuizResult"]
+      request:
+        path_params:
+          id: "string"
+        body:
+          answers:
+            - question_id: 1
+              selected_option_index: 1
+      responses:
+        "200":
+          body:
+            quiz_id: "string"
+            trail_id: "string"
+            score: 4
+            total: 5
+            percentage: 80
+            passed: true
+            answers_review:
+              - question_id: 1
+                correct: true
+                correct_option_index: 1
+            certificate_id: "cert_123"
+
+    - method: GET
+      path: /clinpro/training/certificates/{id}
+      frontend_screens: ["Certificate"]
+      request:
+        path_params:
+          id: "string"
+      responses:
+        "200":
+          body:
+            certificate:
+              id: "cert_123"
+              certificate_code: "CLN-2026-FLP-001234"
+              student_name: "Maria Silva"
+              trail_title: "Fundamentos de Limpeza Profissional"
+              duration_label: "2h 30min"
+              final_score_percent: 80
+              issued_at: "2026-02-23"
+              download_url: "https://..."
+              share_url: "https://..."
+
+  community:
+    - method: GET
+      path: /clinpro/community/posts
+      frontend_screens: ["CommunityFeed"]
+      request:
+        query:
+          category: "Todas|Dicas|Conquistas|Perguntas|Treinamentos|Motivacao (opcional)"
+          page: 1
+          limit: 20
+      responses:
+        "200":
+          body:
+            highlights:
+              most_liked:
+                author_name: "Juliana Santos"
+                likes_count: 67
+              most_active:
+                author_name: "Maria Silva"
+                posts_count: 8
+            items:
+              - $ref: "shared_schemas/CommunityPostSummary"
+            pagination:
+              page: 1
+              limit: 20
+              total: 3
+
+    - method: POST
+      path: /clinpro/community/posts
+      frontend_screens: ["CreatePost"]
+      request:
+        body:
+          category: "Dicas|Conquistas|Perguntas|Treinamentos|Motivacao"
+          title: "string (opcional)"
+          content: "string"
+      responses:
+        "201":
+          body:
+            post:
+              $ref: "shared_schemas/CommunityPostSummary"
+
+    - method: GET
+      path: /clinpro/community/posts/{id}
+      frontend_screens: ["PostDetail"]
+      request:
+        path_params:
+          id: "string"
+      responses:
+        "200":
+          body:
+            post:
+              id: "string"
+              content: "Planejar o deslocamento..."
+              likes_count: 124
+              comments_count: 18
+              author:
+                name: "Maria Silva"
+              comments_preview:
+                - id: "c1"
+                  author_name: "Ana"
+                  text: "Boa dica!"
+
+    - method: POST
+      path: /clinpro/community/posts/{id}/like
+      frontend_screens: ["CommunityFeed (acao de curtir futura)"]
+      request:
+        path_params:
+          id: "string"
+        body: {}
+      responses:
+        "200":
+          body:
+            post_id: "string"
+            liked_by_me: true
+            likes_count: 46
+
+    - method: GET
+      path: /clinpro/community/posts/{id}/comments
+      frontend_screens: ["PostDetail (comentarios detalhados futuros)"]
+      request:
+        path_params:
+          id: "string"
+        query:
+          page: 1
+          limit: 20
+      responses:
+        "200":
+          body:
+            items:
+              - id: "c1"
+                author:
+                  id: "string"
+                  name: "Ana Costa"
+                text: "Excelente dica!"
+                created_at: "2026-02-23T11:00:00-03:00"
+
+    - method: POST
+      path: /clinpro/community/posts/{id}/comments
+      frontend_screens: ["PostDetail (comentar futuro)"]
+      request:
+        path_params:
+          id: "string"
+        body:
+          text: "string"
+      responses:
+        "201":
+          body:
+            id: "c_new"
+            post_id: "string"
+            text: "string"
+            created_at: "2026-02-23T11:00:00-03:00"
+
+  finance_account:
+    - method: GET
+      path: /clinpro/finance/dashboard
+      frontend_screens: ["FinancialDashboard"]
+      request:
+        query:
+          month: "YYYY-MM (opcional)"
+      responses:
+        "200":
+          body:
+            month_balance:
+              amount: 4280.00
+              amount_label: "R$ 4.280,00"
+              goal_amount: 5500.00
+              goal_label: "R$ 5.500,00"
+              progress_percent: 78
+            summary:
+              revenue_amount: 6200.00
+              expense_amount: 1920.00
+              net_amount: 4280.00
+
+    - method: GET
+      path: /clinpro/finance/transactions
+      frontend_screens: ["TransactionsList"]
+      request:
+        query:
+          page: 1
+          limit: 20
+          type: "income|expense (opcional)"
+      responses:
+        "200":
+          body:
+            items:
+              - $ref: "shared_schemas/FinanceTransaction"
+            pagination:
+              page: 1
+              limit: 20
+              total: 3
+
+    - method: GET
+      path: /clinpro/finance/transactions/{id}
+      frontend_screens: ["Sem tela especifica no app atual (rota sugerida no board)"]
+      request:
+        path_params:
+          id: "string"
+      responses:
+        "200":
+          body:
+            transaction:
+              $ref: "shared_schemas/FinanceTransaction"
+
+    - method: GET
+      path: /clinpro/finance/payments/{id}
+      frontend_screens: ["PaymentDetail"]
+      request:
+        path_params:
+          id: "string"
+      responses:
+        "200":
+          body:
+            payment:
+              id: "string"
+              client_name: "Maria Fernandes"
+              amount: 130.00
+              amount_label: "R$ 130,00"
+              status: "paid"
+              status_label: "Pago"
+              method: "PIX"
+              paid_at: "2026-02-19T12:30:00-03:00"
+
+    - method: GET
+      path: /clinpro/finance/mei/summary
+      frontend_screens: ["MEIControl"]
+      request:
+        query:
+          competence: "2026-02 (opcional)"
+      responses:
+        "200":
+          body:
+            competence: "2026-02"
+            das_amount: 76.90
+            das_amount_label: "R$ 76,90"
+            due_date: "2026-02-20"
+            due_date_label: "20/02/2026"
+            status: "up_to_date"
+            status_label: "Em dia"
+
+    - method: GET
+      path: /clinpro/account/overview
+      frontend_screens: ["DigitalAccountOverview"]
+      request:
+        query: {}
+      responses:
+        "200":
+          body:
+            available_balance:
+              amount: 2180.40
+              amount_label: "R$ 2.180,40"
+            pending_receivables:
+              amount: 420.00
+              amount_label: "R$ 420,00"
+            month_transfers_count: 7
+
+    - method: POST
+      path: /clinpro/account/transfers
+      frontend_screens: ["TransferMoney"]
+      request:
+        body:
+          pix_key: "***@email.com"
+          amount: 100.00
+          description: "string (opcional)"
+      responses:
+        "201":
+          body:
+            transfer_id: "trf_123"
+            status: "processing|completed"
+            amount: 100.00
+            amount_label: "R$ 100,00"
+            pix_key_masked: "***@email.com"
+            created_at: "2026-02-23T11:00:00-03:00"
+
+    - method: GET
+      path: /clinpro/account/details
+      frontend_screens: ["AccountDetails"]
+      request:
+        query: {}
+      responses:
+        "200":
+          body:
+            bank_name: "Clin Bank"
+            branch: "0001"
+            account_number: "12345-6"
+            account_status: "pending_activation|active"
+
+    - method: POST
+      path: /clinpro/account/activate
+      frontend_screens: ["AccountActivation"]
+      request:
+        body:
+          confirm: true
+      responses:
+        "200":
+          body:
+            status: "processing"
+            checklist:
+              - label: "Documento enviado"
+                status: "ok"
+              - label: "Selfie validada"
+                status: "ok"
+              - label: "Analise de risco"
+                status: "processing"
+
+  reputation_verification:
+    - method: GET
+      path: /clinpro/reputation/overview
+      frontend_screens: ["ReputationOverview"]
+      request:
+        query: {}
+      responses:
+        "200":
+          body:
+            overall_rating: 4.9
+            overall_rating_label: "4.9 / 5"
+            progress_percent: 98
+            indicators:
+              punctuality_percent: 97
+              quality_percent: 96
+              recurrence_percent: 89
+
+    - method: GET
+      path: /clinpro/reviews
+      frontend_screens: ["ReviewsList"]
+      request:
+        query:
+          page: 1
+          limit: 20
+      responses:
+        "200":
+          body:
+            items:
+              - id: "rev_1"
+                client_name: "Maria Fernandes"
+                rating: 5
+                comment: "Excelente atendimento e organizacao."
+                created_at: "2026-02-19"
+
+    - method: GET
+      path: /clinpro/verification/status
+      frontend_screens: ["VerificationStatus"]
+      request:
+        query: {}
+      responses:
+        "200":
+          body:
+            items:
+              - $ref: "shared_schemas/VerificationItem"
+
+    - method: POST
+      path: /clinpro/verification/documents
+      frontend_screens: ["VerificationStatus / KYC (upload futuro)", "OnboardingKYC"]
+      request:
+        content_type: "multipart/form-data (preferido)"
+        body:
+          document_type: "rg|cnh|comprovante_endereco|selfie"
+          file: "<binary>"
+      responses:
+        "201":
+          body:
+            upload_id: "upl_123"
+            document_type: "rg"
+            status: "received|processing"
+
+    - method: GET
+      path: /clinpro/professional-score
+      frontend_screens: ["ProfessionalScore"]
+      request:
+        query: {}
+      responses:
+        "200":
+          body:
+            score: 820
+            level_label: "Nivel Profissional"
+            progress_percent: 82
+            next_criteria:
+              - label: "Concluir 10 servicos sem cancelamento"
+                reward_points: 30
+
+  onboarding:
+    - method: GET
+      path: /clinpro/onboarding/status
+      frontend_screens: ["Onboarding flow gate (futuro)", "OtpVerification -> OnboardingWelcome"]
+      request:
+        query: {}
+      responses:
+        "200":
+          body:
+            completed: false
+            current_step: "welcome"
+            steps:
+              welcome: true
+              questions: false
+              profile: false
+              account_intro: false
+              kyc: false
+              goal: false
+              tutorial: false
+
+    - method: POST
+      path: /clinpro/onboarding/questions
+      frontend_screens: ["OnboardingQuestions"]
+      request:
+        body:
+          work_areas:
+            - "Residencial"
+            - "Comercial"
+          availability_label: "Segunda a Sexta"
+          availability_days:
+            - "monday"
+            - "tuesday"
+            - "wednesday"
+            - "thursday"
+            - "friday"
+      responses:
+        "200":
+          body:
+            saved: true
+            next_step: "profile"
+
+    - method: PUT
+      path: /clinpro/onboarding/profile
+      frontend_screens: ["OnboardingProfile"]
+      request:
+        body:
+          bio: "string"
+          experience_years: 2
+          specialties:
+            - "Limpeza residencial"
+            - "Limpeza comercial"
+          service_region: "Zona Sul, Sao Paulo"
+      responses:
+        "200":
+          body:
+            saved: true
+            next_step: "account_intro"
+
+    - method: POST
+      path: /clinpro/onboarding/account-intro/complete
+      frontend_screens: ["OnboardingAccountIntro"]
+      request:
+        body:
+          acknowledged: true
+      responses:
+        "200":
+          body:
+            saved: true
+            next_step: "kyc"
+
+    - method: POST
+      path: /clinpro/onboarding/kyc
+      frontend_screens: ["OnboardingKYC"]
+      request:
+        body:
+          document_upload_ids:
+            - "upl_rg"
+            - "upl_selfie"
+      responses:
+        "200":
+          body:
+            status: "submitted"
+            next_step: "goal"
+
+    - method: POST
+      path: /clinpro/onboarding/goal
+      frontend_screens: ["OnboardingFirstGoal"]
+      request:
+        body:
+          goal_type: "services_count|rating|income"
+          target_value: 10
+          period: "first_month"
+      responses:
+        "200":
+          body:
+            saved: true
+            next_step: "tutorial"
+
+    - method: POST
+      path: /clinpro/onboarding/tutorial/complete
+      frontend_screens: ["OnboardingTutorial"]
+      request:
+        body:
+          completed: true
+      responses:
+        "200":
+          body:
+            completed: true
+            onboarding_completed: true
+            next_route: "MainTabs"

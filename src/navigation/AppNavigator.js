@@ -6,7 +6,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 import HomeScreen from '../screens/HomeScreen.jsx';
 import ServiceDetailScreen from '../screens/ServiceDetailScreen.jsx';
@@ -50,10 +50,10 @@ import OnboardingFirstGoalScreen from '../screens/OnboardingFirstGoalScreen.jsx'
 import OnboardingTutorialScreen from '../screens/OnboardingTutorialScreen.jsx';
 import AppStructureScreen from '../screens/AppStructureScreen.jsx';
 import NavigationGuideScreen from '../screens/NavigationGuideScreen.jsx';
-import ProfileDebugScreen from '../screens/dev/ProfileDebugScreen.tsx';
+import ProfileDebugScreen from '../screens/dev/ProfileDebugScreen.jsx';
 import BackendConnectionTestScreen from '../screens/dev/BackendConnectionTestScreen';
-import PhoneLoginScreen from '../screens/auth/PhoneLoginScreen.tsx';
-import OtpVerificationScreen from '../screens/auth/OtpVerificationScreen.tsx';
+import PhoneLoginScreen from '../screens/auth/PhoneLoginScreen.jsx';
+import OtpVerificationScreen from '../screens/auth/OtpVerificationScreen.jsx';
 import AppDrawerContent from '../components/navigation/AppDrawerContent.jsx';
 import { colors } from '../theme/tokens';
 
