@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import QuestionCard from '../components/QuestionCard.jsx';
-import { useQuestionsFlow } from '../context/QuestionsFlowContext';
+import { useQuestionsFlow } from '../hooks/useQuestionsFlow';
 import { useOnboarding } from '../hooks/useOnboarding';
 
 export default function QuestionsMEIScreen({ navigation }) {

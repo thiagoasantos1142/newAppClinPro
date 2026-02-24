@@ -6,8 +6,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../context/AuthContext';
-import { QuestionsFlowProvider } from '../context/QuestionsFlowContext';
+import { useAuth } from '../hooks/useAuth';
 import { colors } from '../theme/tokens';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { getRouteForStep } from './onboardingStepMap';
@@ -246,31 +245,29 @@ export default function AppNavigator() {
   const { loading, isAuthenticated } = useAuth();
 
   return (
-    <QuestionsFlowProvider>
-      <NavigationContainer
-        theme={{
-          ...DefaultTheme,
-          colors: {
-            ...DefaultTheme.colors,
-            background: colors.background,
-            card: '#FFFFFF',
-            text: colors.foreground,
-            border: colors.border,
-            primary: colors.primary,
-          },
-        }}
-      >
-        {loading ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <Text>Carregando...</Text>
-          </View>
-        ) : isAuthenticated ? (
-          <OnboardingGate />
-        ) : (
-          <AuthFlow />
-        )}
-      </NavigationContainer>
-    </QuestionsFlowProvider>
+    <NavigationContainer
+      theme={{
+        ...DefaultTheme,
+        colors: {
+          ...DefaultTheme.colors,
+          background: colors.background,
+          card: '#FFFFFF',
+          text: colors.foreground,
+          border: colors.border,
+          primary: colors.primary,
+        },
+      }}
+    >
+      {loading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Text>Carregando...</Text>
+        </View>
+      ) : isAuthenticated ? (
+        <OnboardingGate />
+      ) : (
+        <AuthFlow />
+      )}
+    </NavigationContainer>
   );
 }
 

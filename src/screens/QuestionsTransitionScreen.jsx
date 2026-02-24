@@ -11,7 +11,7 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton, ProgressBar } from '../components/ui.jsx';
 import { useOnboarding } from '../hooks/useOnboarding';
-import { useQuestionsFlow } from '../context/QuestionsFlowContext';
+import { useQuestionsFlow } from '../hooks/useQuestionsFlow';
 import { getRouteForStep } from '../navigation/onboardingStepMap';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 
