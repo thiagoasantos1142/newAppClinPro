@@ -1,0 +1,45 @@
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
+import { useOnboarding } from '../hooks/useOnboarding';
+import { getRouteForStep } from '../navigation/onboardingStepMap';
+import { colors } from '../theme/tokens';
+
+export default function OnboardingQuestionsEntryScreen({ navigation }) {
+  const { status } = useOnboarding();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!status) {
+      setIsLoading(true);
+      return;
+    }
+
+    setIsLoading(false);
+
+    if (status.completed) {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' }],
+      });
+      return;
+    }
+
+    if (status.current_step !== 'questions') {
+      navigation.replace(getRouteForStep(status.current_step));
+      return;
+    }
+
+    navigation.replace('QuestionsClients');
+  }, [status, navigation]);
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ marginTop: 12, color: colors.mutedForeground }}>Carregando...</Text>
+      </View>
+    );
+  }
+
+  return null;
+}
