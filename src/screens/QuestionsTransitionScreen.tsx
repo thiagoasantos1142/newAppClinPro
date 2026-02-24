@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import type { NavigationProp } from '@react-navigation/native';
 import {
   ActivityIndicator,
   ImageBackground,
@@ -15,10 +16,18 @@ import { useQuestionsFlow } from '../hooks/useQuestionsFlow';
 import { getRouteForStep } from '../navigation/onboardingStepMap';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 
-export default function QuestionsTransitionScreen({ navigation }) {
+type Props = { navigation: NavigationProp<any> };
+type QuestionsAnswers = {
+  clients: string | null;
+  experience: string | null;
+  goal: string | null;
+  mei: string | null;
+};
+
+export default function QuestionsTransitionScreen({ navigation }: Props) {
   const { status, completeStep, loading } = useOnboarding();
   const { questionsData, resetQuestionsData } = useQuestionsFlow();
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const insets = useSafeAreaInsets();
 
@@ -36,7 +45,6 @@ export default function QuestionsTransitionScreen({ navigation }) {
       navigation.navigate('MainTabs');
       return;
     }
-    // Se não estamos no step "questions", redireciona
     if (status.current_step !== 'questions') {
       navigation.navigate(getRouteForStep(status.current_step));
     }
@@ -45,13 +53,10 @@ export default function QuestionsTransitionScreen({ navigation }) {
   const handleContinue = useCallback(async () => {
     try {
       setError(null);
-      // Aqui é a ÚNICA vez que completeStep("questions") é chamado
-      await completeStep('questions', questionsData);
-      // Reseta o contexto para o próximo fluxo
+      const answers = questionsData as QuestionsAnswers;
+      await completeStep('questions', answers);
       resetQuestionsData();
-      // Backend agora retorna current_step = "profile"
-      // A lógica do OnboardingGate vai navegar automaticamente
-    } catch (err) {
+    } catch (err: any) {
       const message = err?.response?.data?.message || err?.message || 'Erro ao continuar.';
       setError(message);
     }
@@ -95,9 +100,7 @@ export default function QuestionsTransitionScreen({ navigation }) {
 
         <View style={styles.panel}>
           <Text style={styles.headline}>Perfeito! 💜</Text>
-          <Text style={styles.subtitle}>
-            Agora vamos montar seu perfil profissional.
-          </Text>
+          <Text style={styles.subtitle}>Agora vamos montar seu perfil profissional.</Text>
 
           <View style={styles.infoCardsWrap}>
             <View style={styles.infoCard}>
@@ -135,12 +138,7 @@ export default function QuestionsTransitionScreen({ navigation }) {
         </View>
       </ScrollView>
 
-      <View
-        style={[
-          styles.footer,
-          { paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.sm },
-        ]}
-      >
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.sm }]}>
         <AppButton
           title={loading ? 'Salvando...' : 'Continuar'}
           onPress={handleContinue}

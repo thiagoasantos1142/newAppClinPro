@@ -1,20 +1,26 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import QuestionCard from '../components/QuestionCard.jsx';
+import type { NavigationProp } from '@react-navigation/native';
+import QuestionCard from '../components/QuestionCard';
 import { useQuestionsFlow } from '../hooks/useQuestionsFlow';
 import { useOnboarding } from '../hooks/useOnboarding';
 
-export default function QuestionsExperienceScreen({ navigation }) {
+type OptionValue = 'iniciante' | 'menos-1-ano' | '1-3-anos' | 'mais-3-anos';
+type Props = { navigation: NavigationProp<any> };
+
+export default function QuestionsExperienceScreen({ navigation }: Props) {
   const { status } = useOnboarding();
   const { questionsData, updateQuestionsData } = useQuestionsFlow();
-  const [selectedOption, setSelectedOption] = useState(questionsData.experience);
-  const [error] = useState(null);
+  const [selectedOption, setSelectedOption] = useState<OptionValue | null>(
+    (questionsData.experience as OptionValue | null) ?? null
+  );
+  const [error] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const totalSteps = 7;
   const completedSteps = status?.steps ? Object.values(status.steps).filter(Boolean).length : 0;
   const currentStepNumber = Math.min(completedSteps + 1, totalSteps);
 
-  const options = [
+  const options: Array<{ value: OptionValue; label: string }> = [
     { value: 'iniciante', label: 'Começando agora' },
     { value: 'menos-1-ano', label: 'Menos de 1 ano' },
     { value: '1-3-anos', label: '1 a 3 anos' },
@@ -28,7 +34,7 @@ export default function QuestionsExperienceScreen({ navigation }) {
   }, [status]);
 
   const handleSelectOption = useCallback(
-    (value) => {
+    (value: OptionValue) => {
       setSelectedOption(value);
       updateQuestionsData('experience', value);
     },

@@ -1,20 +1,26 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import QuestionCard from '../components/QuestionCard.jsx';
+import type { NavigationProp } from '@react-navigation/native';
+import QuestionCard from '../components/QuestionCard';
 import { useQuestionsFlow } from '../hooks/useQuestionsFlow';
 import { useOnboarding } from '../hooks/useOnboarding';
 
-export default function QuestionsClientsScreen({ navigation }) {
+type OptionValue = 'varios' | 'alguns' | 'nenhum';
+type Props = { navigation: NavigationProp<any> };
+
+export default function QuestionsClientsScreen({ navigation }: Props) {
   const { status } = useOnboarding();
   const { questionsData, updateQuestionsData } = useQuestionsFlow();
-  const [selectedOption, setSelectedOption] = useState(questionsData.clients);
-  const [error] = useState(null);
+  const [selectedOption, setSelectedOption] = useState<OptionValue | null>(
+    (questionsData.clients as OptionValue | null) ?? null
+  );
+  const [error] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const totalSteps = 7;
   const completedSteps = status?.steps ? Object.values(status.steps).filter(Boolean).length : 0;
   const currentStepNumber = Math.min(completedSteps + 1, totalSteps);
 
-  const options = [
+  const options: Array<{ value: OptionValue; label: string }> = [
     { value: 'varios', label: 'Sim, vários' },
     { value: 'alguns', label: 'Sim, alguns' },
     { value: 'nenhum', label: 'Ainda não' },
@@ -27,7 +33,7 @@ export default function QuestionsClientsScreen({ navigation }) {
   }, [status]);
 
   const handleSelectOption = useCallback(
-    (value) => {
+    (value: OptionValue) => {
       setSelectedOption(value);
       updateQuestionsData('clients', value);
     },

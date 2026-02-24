@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import type { NavigationProp } from '@react-navigation/native';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { getRouteForStep } from '../navigation/onboardingStepMap';
 import { colors } from '../theme/tokens';
 
-/**
- * Entry point para o fluxo de questions
- * Valida o acesso e navega para a primeira tela (QuestionsClients)
- */
-export default function OnboardingQuestionsEntryScreen({ navigation }) {
+type Props = { navigation: NavigationProp<any> };
+
+export default function OnboardingQuestionsEntryScreen({ navigation }: Props) {
   const { status } = useOnboarding();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -20,7 +19,6 @@ export default function OnboardingQuestionsEntryScreen({ navigation }) {
 
     setIsLoading(false);
 
-    // Se onboarding está completo, vai para MainTabs
     if (status.completed) {
       navigation.reset({
         index: 0,
@@ -29,13 +27,11 @@ export default function OnboardingQuestionsEntryScreen({ navigation }) {
       return;
     }
 
-    // Se não está no step "questions", redireciona para o step correto
     if (status.current_step !== 'questions') {
       navigation.replace(getRouteForStep(status.current_step));
       return;
     }
 
-    // Navega para a primeira tela do fluxo de questions
     navigation.replace('QuestionsClients');
   }, [status, navigation]);
 

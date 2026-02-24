@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
@@ -13,7 +13,31 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton, ProgressBar } from './ui.jsx';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 
-export default function QuestionCard({
+type QuestionOption<T extends string> = {
+  value: T;
+  label: string;
+};
+
+type QuestionCardProps<T extends string> = {
+  currentStepNumber: number;
+  totalSteps: number;
+  headerEmoji?: string;
+  headerText: string;
+  headerTitle: string;
+  headerImageUrl?: string;
+  questionText: string;
+  options: QuestionOption<T>[];
+  selectedOption: T | null;
+  onSelectOption: (value: T) => void;
+  microText?: string;
+  buttonText?: string;
+  onContinue: () => void;
+  isButtonLoading: boolean;
+  error: string | null;
+  isInitialLoading?: boolean;
+};
+
+export default function QuestionCard<T extends string>({
   currentStepNumber,
   totalSteps,
   headerEmoji,
@@ -30,7 +54,7 @@ export default function QuestionCard({
   isButtonLoading,
   error,
   isInitialLoading = false,
-}) {
+}: QuestionCardProps<T>) {
   const insets = useSafeAreaInsets();
 
   if (isInitialLoading) {

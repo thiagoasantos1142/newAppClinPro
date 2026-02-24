@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import QuestionCard from '../components/QuestionCard.jsx';
+import QuestionCard from '../components/QuestionCard';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { getRouteForStep } from '../navigation/onboardingStepMap';
 

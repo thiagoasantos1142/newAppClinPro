@@ -8,7 +8,7 @@ import { useOnboarding } from '../hooks/useOnboarding';
 import { canAccessStep, getRouteForStep } from '../navigation/onboardingStepMap';
 
 export default function OnboardingWelcomeScreen({ navigation }) {
-  const { status, completeStep, loading } = useOnboarding();
+  const { status, completeStep, loading, refresh } = useOnboarding();
   const [error, setError] = useState(null);
   const insets = useSafeAreaInsets();
 
@@ -34,15 +34,19 @@ export default function OnboardingWelcomeScreen({ navigation }) {
   const handleStart = useCallback(async () => {
     try {
       setError(null);
-      if (loading || !status) {
+      if (loading) {
         return;
       }
-      if (status?.steps?.welcome) {
-        navigation.navigate(getRouteForStep(status.current_step));
+      const currentStatus = status || (await refresh());
+      if (!currentStatus) {
         return;
       }
-      if (status.current_step !== 'welcome') {
-        navigation.navigate(getRouteForStep(status.current_step));
+      if (currentStatus?.steps?.welcome) {
+        navigation.navigate(getRouteForStep(currentStatus.current_step));
+        return;
+      }
+      if (currentStatus.current_step !== 'welcome') {
+        navigation.navigate(getRouteForStep(currentStatus.current_step));
         return;
       }
       const result = await completeStep('welcome');
@@ -51,7 +55,7 @@ export default function OnboardingWelcomeScreen({ navigation }) {
       const message = err?.response?.data?.message || err?.message || 'Nao foi possivel concluir esta etapa.';
       setError(message);
     }
-  }, [completeStep, navigation, status, loading]);
+  }, [completeStep, navigation, status, loading, refresh]);
 
   return (
     <View style={styles.container}>
@@ -113,7 +117,7 @@ export default function OnboardingWelcomeScreen({ navigation }) {
         <AppButton
           title={loading ? 'Carregando...' : 'Comecar'}
           onPress={handleStart}
-          disabled={loading || !status}
+          disabled={loading}
           style={styles.primaryButton}
           left={
             loading ? (

@@ -1,20 +1,26 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import QuestionCard from '../components/QuestionCard.jsx';
+import type { NavigationProp } from '@react-navigation/native';
+import QuestionCard from '../components/QuestionCard';
 import { useQuestionsFlow } from '../hooks/useQuestionsFlow';
 import { useOnboarding } from '../hooks/useOnboarding';
 
-export default function QuestionsGoalScreen({ navigation }) {
+type OptionValue = 'ate-2000' | '2000-4000' | '4000-6000' | 'acima-6000';
+type Props = { navigation: NavigationProp<any> };
+
+export default function QuestionsGoalScreen({ navigation }: Props) {
   const { status } = useOnboarding();
   const { questionsData, updateQuestionsData } = useQuestionsFlow();
-  const [selectedOption, setSelectedOption] = useState(questionsData.goal);
-  const [error] = useState(null);
+  const [selectedOption, setSelectedOption] = useState<OptionValue | null>(
+    (questionsData.goal as OptionValue | null) ?? null
+  );
+  const [error] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const totalSteps = 7;
   const completedSteps = status?.steps ? Object.values(status.steps).filter(Boolean).length : 0;
   const currentStepNumber = Math.min(completedSteps + 1, totalSteps);
 
-  const options = [
+  const options: Array<{ value: OptionValue; label: string }> = [
     { value: 'ate-2000', label: 'Até R$ 2.000' },
     { value: '2000-4000', label: 'R$ 2.000 a R$ 4.000' },
     { value: '4000-6000', label: 'R$ 4.000 a R$ 6.000' },
@@ -28,7 +34,7 @@ export default function QuestionsGoalScreen({ navigation }) {
   }, [status]);
 
   const handleSelectOption = useCallback(
-    (value) => {
+    (value: OptionValue) => {
       setSelectedOption(value);
       updateQuestionsData('goal', value);
     },
