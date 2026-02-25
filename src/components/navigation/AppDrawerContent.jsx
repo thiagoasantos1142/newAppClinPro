@@ -92,6 +92,7 @@ export default function AppDrawerContent(props) {
       { key: 'financial', label: 'Financeiro', type: 'screen', target: 'FinancialDashboard', icon: <Feather name="dollar-sign" size={18} color="#FFFFFF" /> },
       { key: 'bank', label: 'Banco Digital', type: 'screen', target: 'DigitalAccountOverview', icon: <Feather name="credit-card" size={18} color="#FFFFFF" /> },
       { key: 'reputation', label: 'Reputação', type: 'screen', target: 'ReputationOverview', icon: <Feather name="star" size={18} color="#FFFFFF" /> },
+      { key: 'video-av-test', label: 'Teste Video AV', type: 'screen', target: 'VideoAvTest', icon: <Feather name="play-circle" size={18} color="#FFFFFF" /> },
     ],
     []
   );

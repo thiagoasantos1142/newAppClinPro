@@ -25,6 +25,9 @@ api.interceptors.request.use(
   (config) => {
     if (authToken) {
       config.headers.Authorization = `Bearer ${authToken}`;
+      if (__DEV__) {
+        console.log('[API] Token usado na requisicao:', authToken);
+      }
     }
     return config;
   },

@@ -61,6 +61,7 @@ import AppStructureScreen from '../screens/AppStructureScreen.jsx';
 import NavigationGuideScreen from '../screens/NavigationGuideScreen.jsx';
 import ProfileDebugScreen from '../screens/dev/ProfileDebugScreen.jsx';
 import BackendConnectionTestScreen from '../screens/dev/BackendConnectionTestScreen';
+import VideoAvTestScreen from '../screens/dev/VideoAvTestScreen.jsx';
 import PhoneLoginScreen from '../screens/auth/PhoneLoginScreen.jsx';
 import OtpVerificationScreen from '../screens/auth/OtpVerificationScreen.jsx';
 import AppDrawerContent from '../components/navigation/AppDrawerContent.jsx';
@@ -165,6 +166,7 @@ function AppStack() {
         component={BackendConnectionTestScreen}
         options={{ title: 'Backend Test' }}
       />
+      <Stack.Screen name="VideoAvTest" component={VideoAvTestScreen} options={{ title: 'Video AV Test' }} />
     </Stack.Navigator>
   );
 }

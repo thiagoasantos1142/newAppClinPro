@@ -53,6 +53,15 @@ export default function VideoLessonScreen({ route, navigation }) {
   const progress = localProgress ?? Number(lesson?.progress_percent || 0);
   const nextLesson = lesson?.next_lesson || null;
   const keyPoints = Array.isArray(lesson?.key_points) ? lesson.key_points : [];
+  const quizSummary = lesson?.quiz_summary || null;
+  const questionsCount = Number(quizSummary?.questions_count || 0);
+  const quizCompleted = useMemo(() => {
+    if (typeof quizSummary?.passed === 'boolean') return quizSummary.passed;
+    if (typeof quizSummary?.completed === 'boolean') return quizSummary.completed;
+    return Boolean(
+      lesson?.quiz_completed || lesson?.quiz_done || lesson?.quiz_passed || lesson?.assessment_completed
+    );
+  }, [lesson, quizSummary]);
 
   const resolvedTrailId = lesson?.trail_id || trailId;
 
@@ -139,6 +148,45 @@ export default function VideoLessonScreen({ route, navigation }) {
             )}
           </AppCard>
 
+          {lesson.is_quiz && (
+            <AppCard>
+              <Text style={styles.cardTitle}>Perguntas da Aula</Text>
+              {questionsCount <= 0 ? (
+                <Text style={styles.pointText}>Nenhuma pergunta disponível para esta aula.</Text>
+              ) : (
+                <Pressable
+                  disabled={quizCompleted}
+                  onPress={() => navigation.navigate('Quiz', { trailId: resolvedTrailId, quizId: lesson.id })}
+                >
+                  <View style={[styles.quizCardRow, quizCompleted && styles.quizCardRowDisabled]}>
+                    <View style={styles.quizCardIcon}>
+                      <Feather name="award" size={18} color={colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.quizHeaderRow}>
+                        <Text style={styles.quizCardOverline}>Avaliação da aula</Text>
+                        <View style={[styles.quizStatusBadge, quizCompleted ? styles.quizStatusDone : styles.quizStatusPending]}>
+                          <Text style={[styles.quizStatusText, quizCompleted ? styles.quizStatusTextDone : styles.quizStatusTextPending]}>
+                            {quizCompleted ? 'Concluída' : 'Pendente'}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.quizCardTitle}>Responder perguntas</Text>
+                      <Text style={styles.quizCardMeta}>
+                        {questionsCount} {questionsCount === 1 ? 'pergunta' : 'perguntas'}
+                      </Text>
+                    </View>
+                    <Feather
+                      name={quizCompleted ? 'lock' : 'chevron-right'}
+                      size={18}
+                      color={colors.mutedForeground}
+                    />
+                  </View>
+                </Pressable>
+              )}
+            </AppCard>
+          )}
+
           <AppButton
             title={savingProgress ? 'Salvando...' : 'Marcar como Concluída'}
             onPress={handleMarkComplete}
@@ -146,21 +194,12 @@ export default function VideoLessonScreen({ route, navigation }) {
             left={<Feather name="check-circle" size={16} color="#FFF" />}
           />
 
-          {nextLesson && !nextLesson.is_quiz && (
+          {nextLesson && (
             <AppButton
-              title={`Próxima Aula: ${nextLesson.title}`}
+              title={`Próxima Aula: ${nextLesson.title}${nextLesson.is_quiz ? ' (com perguntas)' : ''}`}
               variant="secondary"
               onPress={() => navigation.replace('VideoLesson', { trailId: resolvedTrailId, lessonId: nextLesson.id })}
               left={<Feather name="skip-forward" size={16} color={colors.cardForeground} />}
-            />
-          )}
-
-          {nextLesson && nextLesson.is_quiz && (
-            <AppButton
-              title="Ir para Avaliação"
-              variant="secondary"
-              onPress={() => navigation.navigate('Quiz', { trailId: resolvedTrailId, quizId: nextLesson.id })}
-              left={<Feather name="award" size={16} color={colors.cardForeground} />}
             />
           )}
         </ScrollView>
@@ -191,6 +230,19 @@ const styles = StyleSheet.create({
   subtitle: { color: colors.mutedForeground, marginTop: 4, fontSize: 14 },
   meta: { color: colors.primary, marginTop: 8, fontSize: 12, fontWeight: '700' },
   cardTitle: { color: colors.cardForeground, fontSize: 16, fontWeight: '700', marginBottom: 10 },
+  quizCardRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 2 },
+  quizCardRowDisabled: { opacity: 0.65 },
+  quizCardIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondary },
+  quizHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  quizCardOverline: { color: colors.mutedForeground, fontSize: 12 },
+  quizCardTitle: { color: colors.cardForeground, fontSize: 14, fontWeight: '700', marginVertical: 2 },
+  quizCardMeta: { color: colors.mutedForeground, fontSize: 12 },
+  quizStatusBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, borderWidth: 1 },
+  quizStatusDone: { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' },
+  quizStatusPending: { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' },
+  quizStatusText: { fontSize: 10, fontWeight: '700' },
+  quizStatusTextDone: { color: '#047857' },
+  quizStatusTextPending: { color: '#92400E' },
   pointRow: { flexDirection: 'row', gap: 10, marginBottom: 8, alignItems: 'flex-start' },
   pointIndex: { width: 24, height: 24, borderRadius: 999, backgroundColor: colors.secondary, alignItems: 'center', justifyContent: 'center' },
   pointIndexText: { color: colors.primary, fontSize: 12, fontWeight: '700' },

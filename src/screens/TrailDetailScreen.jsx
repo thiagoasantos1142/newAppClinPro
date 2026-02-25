@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { AppCard, AppButton, ProgressBar } from '../components/ui.jsx';
 import { getTrainingTrailById } from '../services/modules/training.service';
 import { colors } from '../theme/tokens';
@@ -82,10 +82,6 @@ export default function TrailDetailScreen({ route, navigation }) {
 
   const onOpenLesson = (lesson) => {
     if (lesson.locked) return;
-    if (lesson.isQuiz) {
-      navigation.navigate('Quiz', { trailId: trail?.id, quizId: lesson.id });
-      return;
-    }
     navigation.navigate('VideoLesson', { trailId: trail?.id, lessonId: lesson.id });
   };
 
@@ -121,6 +117,19 @@ export default function TrailDetailScreen({ route, navigation }) {
               <Text style={styles.percent}>{trail.progress}%</Text>
             </View>
             <ProgressBar value={trail.progress} style={{ marginTop: 8 }} />
+            <Pressable
+              disabled={!trail.completed}
+              onPress={() => navigation.navigate('Certificate', { trailId: trail.id })}
+              style={[styles.certificateCard, !trail.completed && styles.certificateCardDisabled]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.certificateTitle}>Certificado</Text>
+                <Text style={styles.certificateSubtitle}>Abrir certificado desta trilha</Text>
+              </View>
+              <View style={styles.certificateIconWrap}>
+                <Feather name="award" size={18} color="#FFFFFF" />
+              </View>
+            </Pressable>
           </AppCard>
 
           <Text style={styles.sectionTitle}>Aulas</Text>
@@ -139,8 +148,6 @@ export default function TrailDetailScreen({ route, navigation }) {
                           <Feather name="lock" size={16} color="#6B7280" />
                         ) : lesson.completed ? (
                           <Feather name="check-circle" size={18} color={colors.success} />
-                        ) : lesson.isQuiz ? (
-                          <MaterialCommunityIcons name="medal-outline" size={18} color={colors.primary} />
                         ) : (
                           <Feather name="play-circle" size={18} color={colors.primary} />
                         )}
@@ -148,7 +155,14 @@ export default function TrailDetailScreen({ route, navigation }) {
                       <View style={{ flex: 1 }}>
                         <Text style={styles.muted}>Aula {index + 1}</Text>
                         <Text style={styles.lessonTitle}>{lesson.title}</Text>
-                        <Text style={styles.muted}>{lesson.duration}</Text>
+                        <View style={styles.lessonMetaRow}>
+                          <Text style={styles.muted}>{lesson.duration}</Text>
+                          {lesson.isQuiz && (
+                            <View style={styles.quizBadge}>
+                              <Text style={styles.quizBadgeText}>Avaliação</Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
                       {!lesson.locked && <Feather name="chevron-right" size={18} color={colors.mutedForeground} />}
                     </View>
@@ -157,10 +171,6 @@ export default function TrailDetailScreen({ route, navigation }) {
               ))
             )}
           </View>
-
-          {trail.completed && (
-            <AppButton title="Ver Certificado" onPress={() => navigation.navigate('Certificate', { trailId: trail.id })} />
-          )}
         </ScrollView>
       )}
     </View>
@@ -185,9 +195,46 @@ const styles = StyleSheet.create({
   sectionTitle: { color: colors.cardForeground, fontWeight: '700', fontSize: 18, marginTop: 4 },
   lessonList: { gap: 10 },
   lessonRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  lessonMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2, flexWrap: 'wrap' },
+  certificateCard: {
+    marginTop: 12,
+    borderRadius: 16,
+    backgroundColor: '#31C48D',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  certificateCardDisabled: {
+    opacity: 0.5,
+  },
+  certificateTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  certificateSubtitle: { color: 'rgba(255,255,255,0.9)', fontSize: 11, marginTop: 2 },
+  certificateIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   lessonIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   iconDone: { backgroundColor: '#DBEAFE' },
   iconLocked: { backgroundColor: '#E5E7EB' },
   iconOpen: { backgroundColor: colors.secondary },
   lessonTitle: { color: colors.cardForeground, fontSize: 14, fontWeight: '700', marginVertical: 2 },
+  quizBadge: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  quizBadgeText: {
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: '700',
+  },
 });

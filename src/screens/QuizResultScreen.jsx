@@ -11,7 +11,6 @@ export default function QuizResultScreen({ route, navigation }) {
   const total = Number(result?.total || questions.length || 1);
   const percentage = Math.round(Number(result?.percentage ?? ((score / Math.max(total, 1)) * 100)));
   const passed = Boolean(result?.passed ?? percentage >= 70);
-  const certificateId = result?.certificate_id;
   const answersReview = Array.isArray(result?.answers_review) ? result.answers_review : [];
 
   const reviewItems = useMemo(() => {
@@ -65,11 +64,13 @@ export default function QuizResultScreen({ route, navigation }) {
         {passed ? (
           <>
             <AppButton
-              title="Ver Certificado"
-              onPress={() => navigation.replace('Certificate', { trailId, certificateId })}
-              left={<MaterialCommunityIcons name="certificate-outline" size={16} color="#FFF" />}
+              title="Voltar para a Trilha"
+              variant="secondary"
+              onPress={() => {
+                navigation.goBack();
+                navigation.goBack();
+              }}
             />
-            <AppButton title="Voltar para a Trilha" variant="secondary" onPress={() => navigation.navigate('TrailDetail', { trailId })} />
           </>
         ) : (
           <>
