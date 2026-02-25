@@ -194,7 +194,10 @@ function OnboardingFlow({ initialRouteName }) {
 
 function OnboardingGate() {
   const { status, loading, error, refresh } = useOnboarding();
-  const initialRouteName = getRouteForStep(status?.current_step || 'welcome');
+  const initialRouteName =
+    status?.steps?.welcome && status?.current_step === 'welcome'
+      ? 'OnboardingQuestionsEntry'
+      : getRouteForStep(status?.current_step || 'welcome');
 
   if (loading) {
     return (
