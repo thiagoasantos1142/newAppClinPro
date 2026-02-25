@@ -27,7 +27,13 @@ export default function OnboardingQuestionsEntryScreen({ navigation }: Props) {
       return;
     }
 
-    if (status.current_step !== 'questions') {
+      // Se o backend ainda retorna "welcome" mas a etapa ja foi concluida,
+      // liberamos o fluxo de questions.
+      if (status.current_step !== 'questions') {
+        if (status.current_step === 'welcome' && status?.steps?.welcome) {
+          navigation.replace('QuestionsClients');
+          return;
+        }
       navigation.replace(getRouteForStep(status.current_step));
       return;
     }

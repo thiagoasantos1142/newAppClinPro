@@ -26,6 +26,13 @@ export default function OnboardingWelcomeScreen({ navigation }) {
       navigation.navigate('MainTabs');
       return;
     }
+    if (status?.steps?.welcome && status.current_step === 'welcome') {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'QuestionsClients' }],
+      });
+      return;
+    }
     if (!canAccessStep(status, 'welcome')) {
       navigation.navigate(getRouteForStep(status.current_step));
     }
@@ -42,6 +49,13 @@ export default function OnboardingWelcomeScreen({ navigation }) {
         return;
       }
       if (currentStatus?.steps?.welcome) {
+        if (currentStatus.current_step === 'welcome') {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'QuestionsClients' }],
+          });
+          return;
+        }
         navigation.navigate(getRouteForStep(currentStatus.current_step));
         return;
       }
