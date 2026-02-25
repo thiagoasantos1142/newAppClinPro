@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
@@ -10,123 +10,82 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppButton, ProgressBar } from '../components/ui.jsx';
+import { AppButton, ProgressBar } from './ui.jsx';
 import { colors, radius, spacing, typography } from '../theme/tokens';
-import { useOnboarding } from '../hooks/useOnboarding';
-import { canAccessStep, getRouteForStep } from '../navigation/onboardingStepMap';
 
-export default function OnboardingQuestionsScreen({ navigation }) {
-  const { status, completeStep, loading } = useOnboarding();
-  const [selectedOption, setSelectedOption] = useState(null);
-  const [error, setError] = useState(null);
+export default function QuestionCard({
+  currentStepNumber,
+  totalSteps,
+  headerEmoji,
+  headerText,
+  headerTitle,
+  headerImageUrl,
+  questionText,
+  options,
+  selectedOption,
+  onSelectOption,
+  microText,
+  buttonText = 'Continuar',
+  onContinue,
+  isButtonLoading,
+  error,
+  isInitialLoading = false,
+}) {
   const insets = useSafeAreaInsets();
-  const progressPercent = status?.progress_percent ?? 0;
 
-  const totalSteps = 7;
-  const completedSteps = useMemo(() => {
-    if (!status?.steps) return 0;
-    return Object.values(status.steps).filter(Boolean).length;
-  }, [status]);
-  const currentStepNumber = Math.min(completedSteps + 1, totalSteps);
+  if (isInitialLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Carregando...</Text>
+        </View>
+      </View>
+    );
+  }
 
-  const options = [
-    { value: '1-2', label: '1 a 2 dias' },
-    { value: '3-4', label: '3 a 4 dias' },
-    { value: '5-mais', label: '5 dias ou mais' },
-    { value: 'variavel', label: 'Varia muito' },
-  ];
-
-  const availabilityPayloadMap = {
-    '1-2': {
-      availability_label: '1 a 2 dias por semana',
-      availability_days: ['monday', 'tuesday'],
-    },
-    '3-4': {
-      availability_label: '3 a 4 dias por semana',
-      availability_days: ['monday', 'tuesday', 'wednesday', 'thursday'],
-    },
-    '5-mais': {
-      availability_label: '5 dias ou mais por semana',
-      availability_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-    },
-    variavel: {
-      availability_label: 'Disponibilidade variável',
-      availability_days: [],
-    },
-  };
-
-  useEffect(() => {
-    if (!status) return;
-    if (status.completed) {
-      navigation.navigate('MainTabs');
-      return;
-    }
-    if (!canAccessStep(status, 'questions')) {
-      navigation.navigate(getRouteForStep(status.current_step));
-    }
-  }, [status, navigation]);
-
-  const handleContinue = useCallback(async () => {
-    try {
-      setError(null);
-      if (loading || !status) {
-        return;
-      }
-      if (status.current_step !== 'questions') {
-        navigation.navigate(getRouteForStep(status.current_step));
-        return;
-      }
-      if (status?.steps?.questions) {
-        navigation.navigate('OnboardingTransition');
-        return;
-      }
-      if (!selectedOption) {
-        return;
-      }
-      await completeStep('questions', {
-        work_areas: ['Residencial'],
-        ...(availabilityPayloadMap[selectedOption] || availabilityPayloadMap.variavel),
-      });
-      navigation.navigate('OnboardingTransition');
-    } catch (err) {
-      const message = err?.response?.data?.message || err?.message || 'Nao foi possivel concluir esta etapa.';
-      setError(message);
-    }
-  }, [completeStep, navigation, status, loading, selectedOption]);
-
-  const handleSelectOption = useCallback((value) => {
-    setSelectedOption(value);
-  }, []);
+  const isButtonDisabled = !selectedOption || isButtonLoading;
 
   return (
     <View style={styles.container}>
       <View style={[styles.progressWrap, { paddingTop: insets.top + spacing.md }]}>
-        <ProgressBar value={progressPercent} height={6} />
-        <Text style={styles.progressText}>Passo {currentStepNumber} de {totalSteps}</Text>
+        <ProgressBar value={(currentStepNumber / totalSteps) * 100} height={6} />
+        <Text style={styles.progressText}>
+          Passo {currentStepNumber} de {totalSteps}
+        </Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.headerWrap}>
-          <ImageBackground
-            source={{
-              uri:
-                'https://images.unsplash.com/photo-1657040298726-7189d3090d5e?auto=format&fit=crop&w=1080&q=80',
-            }}
-            style={styles.headerImage}
-            imageStyle={styles.headerImageStyle}
-          >
-            <View style={styles.headerOverlay} />
-            <View style={styles.headerContent}>
-              <Text style={styles.headerEyebrow}>Estamos quase la</Text>
-              <Text style={styles.headerTitle}>Vamos entender sua rotina</Text>
+        {headerImageUrl ? (
+          <View style={styles.headerWrap}>
+            <ImageBackground
+              source={{ uri: headerImageUrl }}
+              style={styles.headerImage}
+              imageStyle={styles.headerImageStyle}
+            >
+              <View style={styles.headerOverlay} />
+              <View style={styles.headerContent}>
+                {headerText ? (
+                  <Text style={styles.headerEyebrow}>
+                    {headerText} {headerEmoji || ''}
+                  </Text>
+                ) : null}
+                <Text style={styles.headerTitle}>{headerTitle}</Text>
+              </View>
+            </ImageBackground>
+          </View>
+        ) : (
+          <View style={styles.headerWrapNoImage}>
+            <View style={styles.heroBubble}>
+              <Text style={styles.heroEmoji}>{headerEmoji || '🎯'}</Text>
             </View>
-          </ImageBackground>
-        </View>
+            <Text style={styles.headerTitle}>{headerTitle}</Text>
+            <Text style={styles.headerSubtitle}>{headerText}</Text>
+          </View>
+        )}
 
         <View style={styles.panel}>
-          <Text style={styles.questionTitle}>
-            Hoje, quantos dias por semana voce consegue trabalhar?
-          </Text>
+          <Text style={styles.questionTitle}>{questionText}</Text>
 
           <View style={styles.optionList}>
             {options.map((option) => {
@@ -134,7 +93,7 @@ export default function OnboardingQuestionsScreen({ navigation }) {
               return (
                 <Pressable
                   key={option.value}
-                  onPress={() => handleSelectOption(option.value)}
+                  onPress={() => onSelectOption(option.value)}
                   style={[styles.optionCard, isSelected && styles.optionCardSelected]}
                 >
                   <Text style={[styles.optionLabel, isSelected && styles.optionLabelSelected]}>
@@ -150,7 +109,7 @@ export default function OnboardingQuestionsScreen({ navigation }) {
             })}
           </View>
 
-          <Text style={styles.helperText}>Voce pode ajustar isso depois.</Text>
+          {microText ? <Text style={styles.helperText}>{microText}</Text> : null}
 
           {error ? (
             <View style={styles.errorCard}>
@@ -168,12 +127,12 @@ export default function OnboardingQuestionsScreen({ navigation }) {
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.sm }]}>
         <AppButton
-          title={loading ? 'Salvando...' : 'Continuar'}
-          onPress={handleContinue}
-          disabled={loading || !status || !selectedOption}
+          title={isButtonLoading ? 'Salvando...' : buttonText}
+          onPress={onContinue}
+          disabled={isButtonDisabled}
           style={styles.primaryButton}
           left={
-            loading ? (
+            isButtonLoading ? (
               <ActivityIndicator color={colors.primaryForeground} />
             ) : (
               <Feather name="arrow-right" size={18} color={colors.primaryForeground} />
@@ -189,6 +148,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  loadingWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    color: colors.mutedForeground,
+    fontSize: typography.fontSize.md,
   },
   progressWrap: {
     paddingHorizontal: spacing.lg,
@@ -234,6 +203,30 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
+    textAlign: 'center',
+  },
+  headerWrapNoImage: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    alignItems: 'center',
+  },
+  heroBubble: {
+    width: 100,
+    height: 100,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(31,128,234,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  heroEmoji: {
+    fontSize: 48,
+  },
+  headerSubtitle: {
+    marginTop: spacing.sm,
+    color: colors.mutedForeground,
+    fontSize: typography.fontSize.md,
+    lineHeight: 22,
     textAlign: 'center',
   },
   panel: {

@@ -14,6 +14,7 @@ export default function ModuleTemplate({
   backRoute,
   backParams,
   navigation,
+  children,
 }) {
   const canGoBack = !!navigation?.canGoBack?.();
   const canNavigateBackRoute = !!(backRoute && navigation?.navigate);
@@ -70,6 +71,8 @@ export default function ModuleTemplate({
             {!!section.body && <Text style={styles.body}>{section.body}</Text>}
           </AppCard>
         ))}
+
+        {children}
 
         {actions.map((action) => (
           <AppButton

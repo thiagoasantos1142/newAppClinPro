@@ -33,10 +33,29 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401 && unauthorizedHandler) {
-      unauthorizedHandler();
+  async (error) => {
+    const originalRequest = error.config || {};
+
+    if (
+      error.response?.status === 401 &&
+      unauthorizedHandler &&
+      !originalRequest._retryAfterRefresh
+    ) {
+      originalRequest._retryAfterRefresh = true;
+
+      try {
+        await unauthorizedHandler(error);
+
+        if (authToken) {
+          originalRequest.headers = originalRequest.headers || {};
+          originalRequest.headers.Authorization = `Bearer ${authToken}`;
+          return api(originalRequest);
+        }
+      } catch {
+        // Se o refresh falhar, deixa o fluxo seguir para o logout/tratamento padrão.
+      }
     }
+
     return Promise.reject(error);
   }
 );

@@ -1,28 +1,138 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { RequireClinPro } from '../components/RequireClinPro.jsx';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { services } from '../data/mockData';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
-
-const distanceByService = {
-  '1': '2.3 km',
-  '2': '4.1 km',
-  '3': '3.5 km',
-};
+import { acceptServiceById, getAvailableServices } from '../services/modules/services.service';
 
 export default function AvailableServicesImprovedScreen({ navigation }) {
   const [showFilters, setShowFilters] = useState(false);
+  const [items, setItems] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState(null);
+  const [acceptingIds, setAcceptingIds] = useState({});
+  const loadingMoreRef = useRef(false);
+
+  const loadServices = useCallback(async (pageToLoad = 1, { append = false } = {}) => {
+    if (append) {
+      if (loadingMoreRef.current) return;
+      loadingMoreRef.current = true;
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+      setError(null);
+    }
+
+    try {
+      const data = await getAvailableServices({ page: pageToLoad, limit: 20 });
+      const nextItems = Array.isArray(data?.items) ? data.items : [];
+      setItems((prev) => {
+        if (!append) return nextItems;
+
+        const seen = new Set(prev.map((item) => String(item?.id)));
+        const dedupedNext = nextItems.filter((item) => {
+          const id = String(item?.id);
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+
+        return [...prev, ...dedupedNext];
+      });
+      setPagination(data?.pagination || { page: pageToLoad, limit: 20, total: append ? items.length : 0 });
+      if (!append) setError(null);
+    } catch (err) {
+      if (!append) {
+        setError(err?.response?.data?.message || err?.message || 'Erro ao carregar serviços');
+      }
+    } finally {
+      if (append) {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
+    }
+  }, [items.length]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      void (async () => {
+        setLoading(true);
+        setError(null);
+        try {
+          const data = await getAvailableServices({ page: 1, limit: 20 });
+          if (!isActive) return;
+          setItems(Array.isArray(data?.items) ? data.items : []);
+          setPagination(data?.pagination || { page: 1, limit: 20, total: 0 });
+        } catch (err) {
+          if (!isActive) return;
+          setError(err?.response?.data?.message || err?.message || 'Erro ao carregar serviços');
+        } finally {
+          if (isActive) setLoading(false);
+        }
+      })();
+
+      return () => {
+        isActive = false;
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      };
+    }, [])
+  );
 
   const list = useMemo(
     () =>
-      services.map((service) => ({
-        ...service,
-        distance: distanceByService[service.id] || '3.0 km',
+      items.map((service) => ({
+        id: String(service.id),
+        date: service.date_label || '-',
+        time: service.time_label || '-',
+        type: service.service_type || '-',
+        clientName: service.client_name || 'Cliente',
+        neighborhood: service.neighborhood || service.city || '-',
+        address: service.address || '-',
+        city: service.city || '',
+        price: service.price_label || 'R$ 0,00',
+        distance: service.distance_label || 'Distância indisponível',
+        raw: service,
       })),
-    []
+    [items]
   );
+
+  const hasMore = list.length < (pagination.total || 0);
+
+  const handleAcceptService = useCallback(async (serviceId) => {
+    if (!serviceId || acceptingIds[serviceId]) return;
+
+    setAcceptingIds((prev) => ({ ...prev, [serviceId]: true }));
+    try {
+      await acceptServiceById(serviceId, { accepted_from: 'list' });
+      setItems((prev) => prev.filter((item) => String(item.id) !== String(serviceId)));
+      setPagination((prev) => ({ ...prev, total: Math.max((prev.total || 1) - 1, 0) }));
+      Alert.alert('Sucesso', 'Serviço aceito com sucesso.');
+    } catch (err) {
+      Alert.alert('Erro', err?.response?.data?.message || err?.message || 'Não foi possível aceitar o serviço.');
+    } finally {
+      setAcceptingIds((prev) => ({ ...prev, [serviceId]: false }));
+    }
+  }, [acceptingIds]);
+
+  const handleScroll = useCallback((e) => {
+    if (loading || loadingMore || error || !hasMore) return;
+
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+
+    if (distanceFromBottom < 180) {
+      void loadServices((pagination.page || 1) + 1, { append: true });
+    }
+  }, [error, hasMore, loadServices, loading, loadingMore, pagination.page]);
 
   return (
     <RequireClinPro>
@@ -37,10 +147,32 @@ export default function AvailableServicesImprovedScreen({ navigation }) {
               <Feather name="filter" size={18} color="#FFFFFF" />
             </Pressable>
           </View>
-          <Text style={styles.headerSubtitle}>{list.length} serviços próximos a você</Text>
+          <Text style={styles.headerSubtitle}>
+            {loading ? 'Carregando serviços...' : `${pagination.total || list.length} serviços próximos a você`}
+          </Text>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={styles.content} onScroll={handleScroll} scrollEventThrottle={16}>
+          {loading ? (
+            <AppCard style={styles.infoCard}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.fieldMuted}>Buscando oportunidades...</Text>
+            </AppCard>
+          ) : null}
+
+          {!loading && error ? (
+            <AppCard style={styles.errorCard}>
+              <Text style={styles.errorText}>{error}</Text>
+            </AppCard>
+          ) : null}
+
+          {!loading && !error && list.length === 0 ? (
+            <AppCard>
+              <Text style={styles.emptyTitle}>Nenhum serviço disponível</Text>
+              <Text style={styles.fieldMuted}>Tente novamente em alguns minutos.</Text>
+            </AppCard>
+          ) : null}
+
           {list.map((service) => (
             <AppCard key={service.id} style={styles.card}>
               <View style={styles.rowBetween}>
@@ -65,9 +197,12 @@ export default function AvailableServicesImprovedScreen({ navigation }) {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.addressNeighborhood}>{service.neighborhood}</Text>
                     <Text style={styles.fieldMuted}>{service.address}</Text>
+                    {!!service.city && <Text style={styles.fieldMuted}>{service.city}</Text>}
                   </View>
                 </View>
-                <Text style={styles.distanceText}>{service.distance} de você</Text>
+                <Text style={styles.distanceText}>
+                  {service.raw?.distance_label ? `${service.distance} de você` : service.distance}
+                </Text>
               </View>
 
               <View style={styles.footerRow}>
@@ -84,10 +219,26 @@ export default function AvailableServicesImprovedScreen({ navigation }) {
                   style={{ flex: 1 }}
                   onPress={() => navigation.navigate('ServiceDetailImproved', { serviceId: service.id })}
                 />
-                <AppButton title="Aceitar" style={{ flex: 1 }} onPress={() => {}} />
+                <AppButton
+                  title={acceptingIds[service.id] ? 'Aceitando...' : 'Aceitar'}
+                  style={{ flex: 1 }}
+                  disabled={!!acceptingIds[service.id]}
+                  onPress={() => handleAcceptService(service.id)}
+                />
               </View>
             </AppCard>
           ))}
+
+          {!loading && !error && loadingMore ? (
+            <AppCard style={styles.infoCard}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.fieldMuted}>Carregando mais serviços...</Text>
+            </AppCard>
+          ) : null}
+
+          {!loading && !error && !hasMore && list.length > 0 ? (
+            <Text style={styles.endListText}>Todos os serviços foram carregados.</Text>
+          ) : null}
         </ScrollView>
 
         {showFilters && (
@@ -167,6 +318,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: { padding: 16, gap: 12, paddingBottom: 28 },
+  infoCard: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  errorCard: { borderWidth: 1, borderColor: '#FECACA', backgroundColor: '#FFF7F7' },
+  errorText: { color: colors.danger, fontSize: 13, fontWeight: '600' },
+  emptyTitle: { color: colors.cardForeground, fontSize: 15, fontWeight: '700', marginBottom: 4 },
+  endListText: { textAlign: 'center', color: colors.mutedForeground, fontSize: 12, paddingVertical: 6 },
   card: { borderWidth: 1, borderColor: colors.border },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   fieldLabel: { color: colors.mutedForeground, fontSize: 12 },

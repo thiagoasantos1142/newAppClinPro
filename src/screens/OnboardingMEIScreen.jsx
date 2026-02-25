@@ -4,7 +4,7 @@ import { useOnboarding } from '../hooks/useOnboarding';
 import { getRouteForStep } from '../navigation/onboardingStepMap';
 
 export default function OnboardingMEIScreen({ navigation }) {
-  const { status, completeStep, loading } = useOnboarding();
+  const { status, loading } = useOnboarding();
   const [selectedOption, setSelectedOption] = useState(null);
   const [error, setError] = useState(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -29,8 +29,8 @@ export default function OnboardingMEIScreen({ navigation }) {
       navigation.navigate('MainTabs');
       return;
     }
-    // This is still part of the profile step
-    if (status.current_step !== 'profile') {
+    // Tela legada: serve como transição de UX e não representa etapa própria no contrato.
+    if (status.current_step !== 'profile' && status.current_step !== 'account_intro') {
       navigation.navigate(getRouteForStep(status.current_step));
     }
   }, [status, navigation]);
@@ -39,13 +39,12 @@ export default function OnboardingMEIScreen({ navigation }) {
     if (!selectedOption) return;
     try {
       setError(null);
-      await completeStep('profile', {});
       navigation.navigate('OnboardingFirstAction');
     } catch (err) {
       const message = err?.response?.data?.message || err?.message || 'Erro ao salvar resposta.';
       setError(message);
     }
-  }, [selectedOption, completeStep, navigation]);
+  }, [selectedOption, navigation]);
 
   return (
     <QuestionCard

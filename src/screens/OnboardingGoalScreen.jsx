@@ -20,6 +20,13 @@ export default function OnboardingGoalScreen({ navigation }) {
     { value: 'acima-6000', label: 'Acima de R$ 6.000' },
   ];
 
+  const goalPayloadMap = {
+    'ate-2000': { goal_type: 'income', target_value: 2000, period: 'first_month' },
+    '2000-4000': { goal_type: 'income', target_value: 4000, period: 'first_month' },
+    '4000-6000': { goal_type: 'income', target_value: 6000, period: 'first_month' },
+    'acima-6000': { goal_type: 'income', target_value: 7000, period: 'first_month' },
+  };
+
   useEffect(() => {
     if (!status) {
       setIsInitialLoading(true);
@@ -30,8 +37,7 @@ export default function OnboardingGoalScreen({ navigation }) {
       navigation.navigate('MainTabs');
       return;
     }
-    // This is part of profile step, navigate to transition back if not in profile step
-    if (status.current_step !== 'profile') {
+    if (status.current_step !== 'goal') {
       navigation.navigate(getRouteForStep(status.current_step));
     }
   }, [status, navigation]);
@@ -40,7 +46,7 @@ export default function OnboardingGoalScreen({ navigation }) {
     if (!selectedOption) return;
     try {
       setError(null);
-      await completeStep('profile', {});
+      await completeStep('goal', goalPayloadMap[selectedOption] || goalPayloadMap['ate-2000']);
       navigation.navigate('OnboardingMEI');
     } catch (err) {
       const message = err?.response?.data?.message || err?.message || 'Erro ao salvar resposta.';

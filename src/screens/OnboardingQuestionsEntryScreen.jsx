@@ -1,13 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import type { NavigationProp } from '@react-navigation/native';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { getRouteForStep } from '../navigation/onboardingStepMap';
 import { colors } from '../theme/tokens';
 
-type Props = { navigation: NavigationProp<any> };
-
-export default function OnboardingQuestionsEntryScreen({ navigation }: Props) {
+export default function OnboardingQuestionsEntryScreen({ navigation }) {
   const { status } = useOnboarding();
   const [isLoading, setIsLoading] = useState(true);
 

@@ -31,7 +31,11 @@ export default function OnboardingFirstGoalScreen({ navigation }) {
         navigation.navigate('MainTabs');
         return;
       }
-      const result = await completeStep('goal', {});
+      const result = await completeStep('goal', {
+        goal_type: 'services_count',
+        target_value: 10,
+        period: 'first_month',
+      });
       if (result.completed) {
         navigation.navigate('MainTabs');
         return;

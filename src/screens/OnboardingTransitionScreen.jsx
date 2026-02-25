@@ -15,7 +15,7 @@ import { getRouteForStep } from '../navigation/onboardingStepMap';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 
 export default function OnboardingTransitionScreen({ navigation }) {
-  const { status, completeStep, loading } = useOnboarding();
+  const { status, loading } = useOnboarding();
   const [error, setError] = useState(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const insets = useSafeAreaInsets();
@@ -42,13 +42,12 @@ export default function OnboardingTransitionScreen({ navigation }) {
   const handleContinue = useCallback(async () => {
     try {
       setError(null);
-      await completeStep('questions', {});
       navigation.navigate('OnboardingProfile');
     } catch (err) {
       const message = err?.response?.data?.message || err?.message || 'Erro ao continuar.';
       setError(message);
     }
-  }, [completeStep, navigation]);
+  }, [navigation]);
 
   if (isInitialLoading) {
     return (
