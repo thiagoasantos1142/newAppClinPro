@@ -7,6 +7,21 @@ import { colors } from '../theme/tokens';
 import { getProfile } from '../services/modules/profile.service';
 import { useAuth } from '../hooks/useAuth';
 
+const formatPhoneBR = (value) => {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (!digits) return '-';
+
+  const normalized = digits.startsWith('55') && digits.length >= 12 ? digits.slice(2) : digits;
+
+  if (normalized.length === 11) {
+    return `(${normalized.slice(0, 2)}) ${normalized.slice(2, 7)}-${normalized.slice(7)}`;
+  }
+  if (normalized.length === 10) {
+    return `(${normalized.slice(0, 2)}) ${normalized.slice(2, 6)}-${normalized.slice(6)}`;
+  }
+  return value;
+};
+
 export default function ProfileScreen({ navigation }) {
   const { logout } = useAuth();
   const [profile, setProfile] = useState(null);
@@ -85,7 +100,20 @@ export default function ProfileScreen({ navigation }) {
 
         <AppCard>
           <Text style={styles.sectionTitle}>Informações de Contato</Text>
-          <Text style={styles.value}>{profile.region}</Text>
+          <Text style={styles.label}>Telefone</Text>
+          <Text style={styles.value}>{formatPhoneBR(profile.phone)}</Text>
+          <Text style={styles.label}>E-mail</Text>
+          <Text style={styles.value}>{profile.email || '-'}</Text>
+        </AppCard>
+
+        <AppCard>
+          <Text style={styles.sectionTitle}>Endereço</Text>
+          <Text style={styles.label}>Região</Text>
+          <Text style={styles.value}>{profile.region || '-'}</Text>
+          <Text style={styles.label}>Endereço</Text>
+          <Text style={styles.value}>
+            {profile.full_address || (typeof profile.address === 'string' ? profile.address : '-') }
+          </Text>
         </AppCard>
 
         <AppCard>
@@ -103,7 +131,7 @@ export default function ProfileScreen({ navigation }) {
           </View>
         </AppCard>
 
-        <AppButton title="Editar Perfil" left={<Feather name="edit-3" size={16} color="#FFF" />} onPress={() => {}} />
+        <AppButton title="Editar Perfil" left={<Feather name="edit-3" size={16} color="#FFF" />} onPress={() => navigation.navigate('PersonalData')} />
         <AppButton title="Conta Digital" variant="secondary" left={<Feather name="credit-card" size={16} color={colors.cardForeground} />} onPress={() => navigation.navigate('DigitalAccountOverview')} />
         <AppButton title="Reputação" variant="secondary" left={<Feather name="award" size={16} color={colors.cardForeground} />} onPress={() => navigation.navigate('ReputationOverview')} />
         <AppButton title="Financeiro" variant="secondary" left={<Feather name="bar-chart-2" size={16} color={colors.cardForeground} />} onPress={() => navigation.navigate('FinancialDashboard')} />
@@ -125,6 +153,7 @@ const styles = StyleSheet.create({
   statValue: { color: colors.primary, fontSize: 30, fontWeight: '800' },
   muted: { color: colors.mutedForeground, fontSize: 12 },
   sectionTitle: { color: colors.cardForeground, fontSize: 16, fontWeight: '700', marginBottom: 8 },
+  label: { color: colors.mutedForeground, fontSize: 12, marginTop: 6 },
   value: { color: colors.cardForeground, fontSize: 14, fontWeight: '600', marginBottom: 4 },
   certItem: { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
 });

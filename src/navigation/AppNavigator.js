@@ -40,6 +40,7 @@ import TransactionHistoryScreen from '../screens/TransactionHistoryScreen.jsx';
 import TransferMoneyScreen from '../screens/TransferMoneyScreen.jsx';
 import AccountDetailsScreen from '../screens/AccountDetailsScreen.jsx';
 import AccountActivationScreen from '../screens/AccountActivationScreen.jsx';
+import PersonalDataScreen from '../screens/PersonalDataScreen.jsx';
 import ReputationOverviewScreen from '../screens/ReputationOverviewScreen.jsx';
 import ReviewsListScreen from '../screens/ReviewsListScreen.jsx';
 import VerificationStatusScreen from '../screens/VerificationStatusScreen.jsx';
@@ -147,6 +148,7 @@ function AppStack() {
       <Stack.Screen name="TransferMoney" component={TransferMoneyScreen} />
       <Stack.Screen name="AccountDetails" component={AccountDetailsScreen} />
       <Stack.Screen name="AccountActivation" component={AccountActivationScreen} />
+      <Stack.Screen name="PersonalData" component={PersonalDataScreen} />
       <Stack.Screen name="ReputationOverview" component={ReputationOverviewScreen} />
       <Stack.Screen name="ReviewsList" component={ReviewsListScreen} />
       <Stack.Screen name="VerificationStatus" component={VerificationStatusScreen} />

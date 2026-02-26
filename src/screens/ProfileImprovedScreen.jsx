@@ -19,7 +19,7 @@ export default function ProfileImprovedScreen({ navigation }) {
         <View style={styles.headerRow}>
           <View style={styles.menuSlot} />
           <Text style={styles.headerTitle}>Meu Perfil</Text>
-          <Pressable style={styles.editHeaderButton}>
+          <Pressable style={styles.editHeaderButton} onPress={() => navigation.navigate('PersonalData')}>
             <Feather name="edit-3" size={18} color="#FFFFFF" />
           </Pressable>
         </View>
@@ -117,7 +117,7 @@ export default function ProfileImprovedScreen({ navigation }) {
         <AppCard>
           <View style={styles.rowBetween}>
             <Text style={styles.sectionTitle}>Sobre</Text>
-            <Pressable>
+            <Pressable onPress={() => navigation.navigate('PersonalData')}>
               <Text style={styles.link}>Editar</Text>
             </Pressable>
           </View>
@@ -127,7 +127,7 @@ export default function ProfileImprovedScreen({ navigation }) {
           </Text>
         </AppCard>
 
-        <AppButton title="Editar Perfil" left={<Feather name="edit-3" size={16} color="#FFF" />} onPress={() => {}} />
+        <AppButton title="Editar Perfil" left={<Feather name="edit-3" size={16} color="#FFF" />} onPress={() => navigation.navigate('PersonalData')} />
         <AppButton
           title="Configurações"
           variant="secondary"
