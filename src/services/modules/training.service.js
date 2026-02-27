@@ -15,8 +15,11 @@ export const getTrainingLessonById = async (id) => {
   return data;
 };
 
-export const saveTrainingLessonProgress = async (id, payload) => {
-  const { data } = await api.post(`/clinpro/training/lessons/${id}/progress`, payload);
+export const saveTrainingLessonProgress = async (id, lastPositionSeconds) => {
+  const normalizedSeconds = Math.max(0, Math.floor(Number(lastPositionSeconds || 0)));
+  const { data } = await api.post(`/clinpro/training/lessons/${id}/progress`, {
+    last_position_seconds: normalizedSeconds,
+  });
   return data;
 };
 

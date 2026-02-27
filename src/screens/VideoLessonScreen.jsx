@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { AppButton, AppCard } from '../components/ui.jsx';
@@ -8,12 +8,23 @@ import { getTrainingLessonById, saveTrainingLessonProgress } from '../services/m
 import { colors } from '../theme/tokens';
 
 export default function VideoLessonScreen({ route, navigation }) {
+  const AUTO_SAVE_INTERVAL_SECONDS = 12;
   const { trailId, lessonId } = route.params || {};
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [savingProgress, setSavingProgress] = useState(false);
   const [hasStartedPlayback, setHasStartedPlayback] = useState(false);
+  const [isThumbnailReady, setIsThumbnailReady] = useState(false);
+  const lastPersistedSecondRef = useRef(0);
+  const latestPlaybackSecondRef = useRef(0);
+  const previousPlaybackSecondRef = useRef(0);
+  const maxSeekAllowedRef = useRef(0);
+  const lastSeekWarningAtRef = useRef(0);
+  const isSeekWarningOpenRef = useRef(false);
+  const lastPlayingRef = useRef(false);
+  const isPersistingRef = useRef(false);
+  const hasPersistedEndedRef = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -97,6 +108,18 @@ export default function VideoLessonScreen({ route, navigation }) {
   }, [thumbnailUri]);
 
   useEffect(() => {
+    if (!thumbnailUri) {
+      setIsThumbnailReady(false);
+      return;
+    }
+
+    setIsThumbnailReady(false);
+    Image.prefetch(thumbnailUri)
+      .catch(() => null)
+      .finally(() => {});
+  }, [thumbnailUri]);
+
+  useEffect(() => {
     setHasStartedPlayback(false);
   }, [videoUri]);
 
@@ -104,8 +127,16 @@ export default function VideoLessonScreen({ route, navigation }) {
     if (!videoUri || hasStartedPlayback) return;
 
     const interval = setInterval(() => {
-      const currentTime = Number(player.currentTime || 0);
-      if (player.playing || currentTime > 0) {
+      let currentTime = 0;
+      let isPlaying = false;
+      try {
+        currentTime = Number(player.currentTime || 0);
+        isPlaying = Boolean(player.playing);
+      } catch {
+        return;
+      }
+
+      if (isPlaying || currentTime > 0) {
         setHasStartedPlayback(true);
       }
     }, 250);
@@ -121,23 +152,218 @@ export default function VideoLessonScreen({ route, navigation }) {
 
   const lessonTitle = video?.title || lesson?.title || 'Aula';
   const durationLabel = video?.duration_label || lesson?.duration_label || null;
+  const maxSeekFromApi = useMemo(() => {
+    const candidates = [
+      lesson?.max_seek_seconds,
+      lesson?.max_allowed_seek_seconds,
+      lesson?.max_allowed_position_seconds,
+      lesson?.max_position_seconds,
+      lesson?.progress?.max_seek_seconds,
+      lesson?.progress?.max_allowed_position_seconds,
+      lesson?.last_position_seconds,
+    ];
+    const value = candidates.find((item) => Number.isFinite(Number(item)));
+    return Math.max(0, Math.floor(Number(value || 0)));
+  }, [
+    lesson?.last_position_seconds,
+    lesson?.max_allowed_position_seconds,
+    lesson?.max_allowed_seek_seconds,
+    lesson?.max_position_seconds,
+    lesson?.max_seek_seconds,
+    lesson?.progress?.max_allowed_position_seconds,
+    lesson?.progress?.max_seek_seconds,
+  ]);
+
+  useEffect(() => {
+    if (!lesson?.id) return;
+    console.log('[VideoLessonScreen] Max seek allowed (s):', maxSeekFromApi);
+  }, [lesson?.id, maxSeekFromApi]);
+  const readSafePlayerState = useCallback(() => {
+    try {
+      return {
+        currentTime: Math.max(0, Number(player?.currentTime || 0)),
+        duration: Math.max(0, Number(player?.duration || lesson?.duration_seconds || 0)),
+        isPlaying: Boolean(player?.playing),
+      };
+    } catch {
+      return {
+        currentTime: latestPlaybackSecondRef.current,
+        duration: Math.max(0, Number(lesson?.duration_seconds || 0)),
+        isPlaying: false,
+      };
+    }
+  }, [lesson?.duration_seconds, player]);
+
+  const applyProgressFromResponse = useCallback((response) => {
+    const apiProgress = response?.progress || {};
+    setData((prev) => ({
+      ...prev,
+      lesson: prev?.lesson
+        ? {
+            ...prev.lesson,
+            progress_percent: Number(apiProgress?.progress_percent ?? prev.lesson.progress_percent ?? 0),
+            last_position_seconds: Number(apiProgress?.last_position_seconds ?? prev.lesson.last_position_seconds ?? 0),
+            duration_seconds: Number(apiProgress?.duration_seconds ?? prev.lesson.duration_seconds ?? 0),
+            completed: typeof apiProgress?.completed === 'boolean' ? apiProgress.completed : prev.lesson.completed,
+          }
+        : prev?.lesson,
+    }));
+
+    const normalizedPosition = Number(apiProgress?.last_position_seconds || 0);
+    if (Number.isFinite(normalizedPosition) && normalizedPosition >= 0) {
+      lastPersistedSecondRef.current = Math.floor(normalizedPosition);
+    }
+  }, []);
+
+  const persistVideoProgress = useCallback(async (positionSeconds, options = {}) => {
+    const { force = false } = options;
+    if (!lesson?.id) return null;
+
+    const normalizedPosition = Math.max(0, Math.floor(Number(positionSeconds || 0)));
+    if (!force && normalizedPosition <= 0) return null;
+    if (!force && Math.abs(normalizedPosition - lastPersistedSecondRef.current) < AUTO_SAVE_INTERVAL_SECONDS) return null;
+    if (isPersistingRef.current) return null;
+
+    isPersistingRef.current = true;
+    try {
+      const response = await saveTrainingLessonProgress(lesson.id, normalizedPosition);
+      applyProgressFromResponse(response);
+      return response;
+    } catch (err) {
+      console.log('[VideoLessonScreen] Falha ao persistir progresso:', err?.message || err);
+      return null;
+    } finally {
+      isPersistingRef.current = false;
+    }
+  }, [AUTO_SAVE_INTERVAL_SECONDS, applyProgressFromResponse, lesson?.id]);
+
+  useEffect(() => {
+    lastPersistedSecondRef.current = Math.max(0, Math.floor(Number(lesson?.last_position_seconds || 0)));
+    latestPlaybackSecondRef.current = lastPersistedSecondRef.current;
+    previousPlaybackSecondRef.current = lastPersistedSecondRef.current;
+    maxSeekAllowedRef.current = Math.max(maxSeekFromApi, lastPersistedSecondRef.current);
+    lastPlayingRef.current = false;
+    hasPersistedEndedRef.current = false;
+  }, [lesson?.id, lesson?.last_position_seconds, maxSeekFromApi]);
+
+  useEffect(() => {
+    if (!videoUri || loading || error || !lesson?.id) return;
+
+    const interval = setInterval(() => {
+      const { currentTime, duration, isPlaying } = readSafePlayerState();
+      const previousTime = previousPlaybackSecondRef.current;
+      const delta = currentTime - previousTime;
+      const effectiveMaxSeek = Math.max(maxSeekAllowedRef.current, lastPersistedSecondRef.current);
+
+      // Bloqueia apenas pulos grandes para frente (seek manual).
+      // Tolerancias maiores evitam travar reproducao normal por variacao de buffering/HLS.
+      const jumpedFarAhead = delta > 8;
+      if (currentTime > effectiveMaxSeek + 2 && jumpedFarAhead) {
+        try {
+          player.currentTime = effectiveMaxSeek;
+        } catch {}
+
+        const now = Date.now();
+        const canWarn = now - lastSeekWarningAtRef.current > 3000;
+        if (canWarn && !isSeekWarningOpenRef.current) {
+          lastSeekWarningAtRef.current = now;
+          isSeekWarningOpenRef.current = true;
+          Alert.alert(
+            'Aviso',
+            'Você ainda não pode adiantar o vídeo. Continue assistindo para liberar os próximos minutos.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  isSeekWarningOpenRef.current = false;
+                },
+              },
+            ],
+            {
+              cancelable: true,
+              onDismiss: () => {
+                isSeekWarningOpenRef.current = false;
+              },
+            }
+          );
+        }
+
+        latestPlaybackSecondRef.current = effectiveMaxSeek;
+        previousPlaybackSecondRef.current = effectiveMaxSeek;
+        return;
+      }
+
+      latestPlaybackSecondRef.current = currentTime;
+      previousPlaybackSecondRef.current = currentTime;
+
+      // Enquanto reproduz naturalmente, o teto local avanca junto.
+      if (isPlaying && currentTime > maxSeekAllowedRef.current && delta > 0 && delta <= 8) {
+        maxSeekAllowedRef.current = currentTime;
+      }
+
+      if (isPlaying && currentTime - lastPersistedSecondRef.current >= AUTO_SAVE_INTERVAL_SECONDS) {
+        void persistVideoProgress(currentTime);
+      }
+
+      if (lastPlayingRef.current && !isPlaying) {
+        void persistVideoProgress(currentTime, { force: true });
+      }
+
+      if (!hasPersistedEndedRef.current && duration > 0 && currentTime >= duration - 1) {
+        hasPersistedEndedRef.current = true;
+        void persistVideoProgress(duration, { force: true });
+      }
+
+      if (currentTime < duration - 3) {
+        hasPersistedEndedRef.current = false;
+      }
+
+      lastPlayingRef.current = isPlaying;
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [AUTO_SAVE_INTERVAL_SECONDS, error, lesson?.duration_seconds, lesson?.id, loading, persistVideoProgress, player, readSafePlayerState, videoUri]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') return;
+      const currentTime = latestPlaybackSecondRef.current;
+      void persistVideoProgress(currentTime, { force: true });
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [persistVideoProgress]);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        const currentTime = latestPlaybackSecondRef.current;
+        void persistVideoProgress(currentTime, { force: true });
+      };
+    }, [persistVideoProgress])
+  );
 
   const handleMarkComplete = useCallback(async () => {
     if (!lesson?.id || savingProgress) return;
     setSavingProgress(true);
     try {
-      await saveTrainingLessonProgress(lesson.id, { progress_percent: 100, completed: true });
-      setData((prev) => ({
-        ...prev,
-        lesson: prev?.lesson ? { ...prev.lesson, progress_percent: 100 } : prev?.lesson,
-      }));
-      Alert.alert('Sucesso', 'Progresso da aula atualizado.');
+      const { currentTime, duration } = readSafePlayerState();
+      const fallbackDuration = Math.max(0, Number(lesson?.duration_seconds || 0));
+      const positionToSave = Math.max(0, Math.ceil(duration || fallbackDuration || currentTime));
+      const response = await persistVideoProgress(positionToSave, { force: true });
+      if (response?.ok) {
+        Alert.alert('Sucesso', 'Progresso da aula atualizado.');
+      } else {
+        Alert.alert('Erro', 'Não foi possível salvar o progresso.');
+      }
     } catch (err) {
       Alert.alert('Erro', err?.response?.data?.message || err?.message || 'Não foi possível salvar o progresso.');
     } finally {
       setSavingProgress(false);
     }
-  }, [lesson?.id, savingProgress]);
+  }, [lesson?.duration_seconds, lesson?.id, persistVideoProgress, readSafePlayerState, savingProgress]);
 
   return (
     <View style={styles.container}>
@@ -164,10 +390,23 @@ export default function VideoLessonScreen({ route, navigation }) {
             />
             {!!thumbnailUri && !hasStartedPlayback && (
               <View pointerEvents="none" style={styles.thumbnailOverlay}>
-                <Image source={{ uri: thumbnailUri }} style={styles.thumbnailImage} resizeMode="contain" />
-                <View style={styles.thumbnailPlayBadge}>
-                  <Feather name="play" size={28} color="#FFFFFF" />
-                </View>
+                <Image
+                  source={{ uri: thumbnailUri }}
+                  style={styles.thumbnailImage}
+                  resizeMode="contain"
+                  onLoad={() => setIsThumbnailReady(true)}
+                  onError={() => setIsThumbnailReady(true)}
+                />
+                {!isThumbnailReady && (
+                  <View style={styles.thumbnailLoadingOverlay}>
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  </View>
+                )}
+                {isThumbnailReady && (
+                  <View style={styles.thumbnailPlayBadge}>
+                    <Feather name="play" size={28} color="#FFFFFF" />
+                  </View>
+                )}
               </View>
             )}
           </>
@@ -296,6 +535,12 @@ const styles = StyleSheet.create({
   thumbnailImage: {
     width: '100%',
     height: '100%',
+  },
+  thumbnailLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.22)',
   },
   thumbnailPlayBadge: {
     position: 'absolute',
