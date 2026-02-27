@@ -13,9 +13,9 @@ export default function VideoLessonScreen({ route, navigation }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [savingProgress, setSavingProgress] = useState(false);
   const [hasStartedPlayback, setHasStartedPlayback] = useState(false);
   const [isThumbnailReady, setIsThumbnailReady] = useState(false);
+  const [videoCompletionPercent, setVideoCompletionPercent] = useState(0);
   const lastPersistedSecondRef = useRef(0);
   const latestPlaybackSecondRef = useRef(0);
   const previousPlaybackSecondRef = useRef(0);
@@ -26,6 +26,9 @@ export default function VideoLessonScreen({ route, navigation }) {
   const lastPlayingRef = useRef(false);
   const isPersistingRef = useRef(false);
   const hasPersistedEndedRef = useRef(false);
+  const isSeekRollbackRunningRef = useRef(false);
+  const seekRollbackCooldownUntilRef = useRef(0);
+  const seekRollbackTimeoutRef = useRef(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -153,6 +156,8 @@ export default function VideoLessonScreen({ route, navigation }) {
 
   const lessonTitle = video?.title || lesson?.title || 'Aula';
   const durationLabel = video?.duration_label || lesson?.duration_label || null;
+  const hasQuizRequirement = Boolean(lesson?.is_quiz && questionsCount > 0);
+  const canGoToNextLesson = Boolean(nextLesson) && videoCompletionPercent >= 98 && (!hasQuizRequirement || quizCompleted);
   const maxSeekFromApi = useMemo(() => {
     const candidates = [
       lesson?.max_seek_seconds,
@@ -243,10 +248,24 @@ export default function VideoLessonScreen({ route, navigation }) {
     latestPlaybackSecondRef.current = lastPersistedSecondRef.current;
     previousPlaybackSecondRef.current = lastPersistedSecondRef.current;
     maxSeekAllowedRef.current = Math.max(maxSeekFromApi, lastPersistedSecondRef.current);
-    hasAppliedAutoResumeRef.current = false;
     lastPlayingRef.current = false;
     hasPersistedEndedRef.current = false;
+    isSeekRollbackRunningRef.current = false;
+    seekRollbackCooldownUntilRef.current = 0;
+    if (seekRollbackTimeoutRef.current) {
+      clearTimeout(seekRollbackTimeoutRef.current);
+      seekRollbackTimeoutRef.current = null;
+    }
   }, [lesson?.id, lesson?.last_position_seconds, maxSeekFromApi]);
+
+  useEffect(() => {
+    hasAppliedAutoResumeRef.current = false;
+  }, [lesson?.id, videoUri]);
+
+  useEffect(() => {
+    const initialPercent = Math.max(0, Math.min(100, Number(lesson?.progress_percent || 0)));
+    setVideoCompletionPercent(initialPercent);
+  }, [lesson?.id, lesson?.progress_percent]);
 
   useEffect(() => {
     if (!videoUri || loading || error || !lesson?.id || hasAppliedAutoResumeRef.current) return;
@@ -257,41 +276,44 @@ export default function VideoLessonScreen({ route, navigation }) {
       return;
     }
 
-    let timeoutId = null;
     const interval = setInterval(() => {
       try {
         const duration = Math.max(0, Number(player?.duration || lesson?.duration_seconds || 0));
         if (duration <= 0) return;
+
         const target = Math.min(lastPosition, duration);
+        if (target <= 0) {
+          hasAppliedAutoResumeRef.current = true;
+          clearInterval(interval);
+          return;
+        }
 
-        // Fluxo seguro para evitar bug nativo: começa em 0, avança e pausa.
-        player.currentTime = 0;
-        latestPlaybackSecondRef.current = 0;
-        previousPlaybackSecondRef.current = 0;
-        player.play();
-        clearInterval(interval);
+        const currentTime = Math.max(0, Number(player?.currentTime || 0));
+        const isPlaying = Boolean(player?.playing);
 
-        timeoutId = setTimeout(() => {
-          try {
-            player.currentTime = target;
-            latestPlaybackSecondRef.current = target;
-            previousPlaybackSecondRef.current = target;
-            player.pause();
-          } catch {
-            // Ignora falha de seek/pause se o player for desmontado.
-          } finally {
-            hasAppliedAutoResumeRef.current = true;
-          }
-        }, 450);
+        if (!isPlaying && currentTime < 1) {
+          player.currentTime = 0;
+          latestPlaybackSecondRef.current = 0;
+          previousPlaybackSecondRef.current = 0;
+          player.play();
+          return;
+        }
+
+        if (currentTime >= 1) {
+          player.currentTime = target;
+          maxSeekAllowedRef.current = Math.max(maxSeekAllowedRef.current, target);
+          latestPlaybackSecondRef.current = target;
+          previousPlaybackSecondRef.current = target;
+          player.pause();
+          hasAppliedAutoResumeRef.current = true;
+          clearInterval(interval);
+        }
       } catch {
-        // Aguarda player ficar pronto.
+        // Aguarda o player ficar pronto.
       }
     }, 200);
 
-    return () => {
-      clearInterval(interval);
-      if (timeoutId) clearTimeout(timeoutId);
-    };
+    return () => clearInterval(interval);
   }, [error, lesson?.duration_seconds, lesson?.id, lesson?.last_position_seconds, loading, player, videoUri]);
 
   useEffect(() => {
@@ -302,16 +324,39 @@ export default function VideoLessonScreen({ route, navigation }) {
       const previousTime = previousPlaybackSecondRef.current;
       const delta = currentTime - previousTime;
       const effectiveMaxSeek = Math.max(maxSeekAllowedRef.current, lastPersistedSecondRef.current);
+      const progressFromPlayback = duration > 0 ? (currentTime / duration) * 100 : 0;
+      const progressFromApi = Number(lesson?.progress_percent || 0);
+      const bestProgress = Math.max(progressFromPlayback, progressFromApi);
+      setVideoCompletionPercent((prev) => (bestProgress > prev ? Math.min(100, bestProgress) : prev));
 
       // Bloqueia apenas pulos grandes para frente (seek manual).
       // Tolerancias maiores evitam travar reproducao normal por variacao de buffering/HLS.
       const jumpedFarAhead = delta > 8;
       if (currentTime > effectiveMaxSeek + 2 && jumpedFarAhead) {
-        try {
-          player.currentTime = effectiveMaxSeek;
-        } catch {}
-
         const now = Date.now();
+        const shouldRollbackNow =
+          !isSeekRollbackRunningRef.current && now >= seekRollbackCooldownUntilRef.current;
+        if (shouldRollbackNow) {
+          isSeekRollbackRunningRef.current = true;
+          if (seekRollbackTimeoutRef.current) clearTimeout(seekRollbackTimeoutRef.current);
+
+          const shouldResumePlayback = isPlaying;
+          seekRollbackTimeoutRef.current = setTimeout(() => {
+            try {
+              player.currentTime = effectiveMaxSeek;
+              if (shouldResumePlayback) {
+                player.play();
+              }
+            } catch {
+              // Ignora erro se o player estiver em desmontagem.
+            } finally {
+              isSeekRollbackRunningRef.current = false;
+              seekRollbackCooldownUntilRef.current = Date.now() + 1000;
+              seekRollbackTimeoutRef.current = null;
+            }
+          }, 120);
+        }
+
         const canWarn = now - lastSeekWarningAtRef.current > 3000;
         if (canWarn && !isSeekWarningOpenRef.current) {
           lastSeekWarningAtRef.current = now;
@@ -370,7 +415,16 @@ export default function VideoLessonScreen({ route, navigation }) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [AUTO_SAVE_INTERVAL_SECONDS, error, lesson?.duration_seconds, lesson?.id, loading, persistVideoProgress, player, readSafePlayerState, videoUri]);
+  }, [AUTO_SAVE_INTERVAL_SECONDS, error, lesson?.duration_seconds, lesson?.id, lesson?.progress_percent, loading, persistVideoProgress, player, readSafePlayerState, videoUri]);
+
+  useEffect(() => {
+    return () => {
+      if (seekRollbackTimeoutRef.current) {
+        clearTimeout(seekRollbackTimeoutRef.current);
+        seekRollbackTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
@@ -392,26 +446,6 @@ export default function VideoLessonScreen({ route, navigation }) {
       };
     }, [persistVideoProgress])
   );
-
-  const handleMarkComplete = useCallback(async () => {
-    if (!lesson?.id || savingProgress) return;
-    setSavingProgress(true);
-    try {
-      const { currentTime, duration } = readSafePlayerState();
-      const fallbackDuration = Math.max(0, Number(lesson?.duration_seconds || 0));
-      const positionToSave = Math.max(0, Math.ceil(duration || fallbackDuration || currentTime));
-      const response = await persistVideoProgress(positionToSave, { force: true });
-      if (response?.ok) {
-        Alert.alert('Sucesso', 'Progresso da aula atualizado.');
-      } else {
-        Alert.alert('Erro', 'Não foi possível salvar o progresso.');
-      }
-    } catch (err) {
-      Alert.alert('Erro', err?.response?.data?.message || err?.message || 'Não foi possível salvar o progresso.');
-    } finally {
-      setSavingProgress(false);
-    }
-  }, [lesson?.duration_seconds, lesson?.id, persistVideoProgress, readSafePlayerState, savingProgress]);
 
   return (
     <View style={styles.container}>
@@ -543,20 +577,22 @@ export default function VideoLessonScreen({ route, navigation }) {
             </AppCard>
           )}
 
-          <AppButton
-            title={savingProgress ? 'Salvando...' : 'Marcar como Concluída'}
-            onPress={handleMarkComplete}
-            disabled={savingProgress}
-            left={<Feather name="check-circle" size={16} color="#FFF" />}
-          />
-
           {nextLesson && (
-            <AppButton
+            <>
+              <AppButton
               title={`Próxima Aula: ${nextLesson.title}${nextLesson.is_quiz ? ' (com perguntas)' : ''}`}
-              variant="secondary"
+              disabled={!canGoToNextLesson}
               onPress={() => navigation.replace('VideoLesson', { trailId: resolvedTrailId, lessonId: nextLesson.id })}
-              left={<Feather name="skip-forward" size={16} color={colors.cardForeground} />}
-            />
+              left={<Feather name="skip-forward" size={16} color="#FFFFFF" />}
+              />
+              {!canGoToNextLesson && (
+                <Text style={styles.requirementsHint}>
+                  {!hasQuizRequirement || quizCompleted
+                    ? `Assista pelo menos 98% do vídeo para liberar a próxima aula. (${Math.floor(videoCompletionPercent)}%)`
+                    : `Assista 98% do vídeo e passe no quiz para liberar a próxima aula. (${Math.floor(videoCompletionPercent)}%)`}
+                </Text>
+              )}
+            </>
           )}
         </ScrollView>
       )}
@@ -630,4 +666,5 @@ const styles = StyleSheet.create({
   pointIndex: { width: 24, height: 24, borderRadius: 999, backgroundColor: colors.secondary, alignItems: 'center', justifyContent: 'center' },
   pointIndexText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
   pointText: { color: colors.cardForeground, fontSize: 14, flex: 1 },
+  requirementsHint: { color: colors.mutedForeground, fontSize: 12, marginTop: -4 },
 });

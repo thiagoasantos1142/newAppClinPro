@@ -60,9 +60,18 @@ export default function TrailDetailScreen({ route, navigation }) {
     };
   }, [data?.trail]);
 
-  const lessons = useMemo(
-    () =>
-      (Array.isArray(data?.lessons) ? data.lessons : []).map((lesson, index) => ({
+  const lessons = useMemo(() => {
+    const rawLessons = Array.isArray(data?.lessons) ? data.lessons : [];
+
+    return rawLessons.map((lesson, index) => {
+      const selfCompleted = Boolean(lesson.completed) || Number(lesson.progress_percent || 0) >= 100;
+      const previousLesson = rawLessons[index - 1];
+      const previousCompleted =
+        index === 0
+          ? true
+          : Boolean(previousLesson?.completed) || Number(previousLesson?.progress_percent || 0) >= 100;
+
+      return {
         id: String(lesson.id),
         trailId: String(lesson.trail_id || trailId || ''),
         title: lesson.title || `Aula ${index + 1}`,
@@ -70,10 +79,10 @@ export default function TrailDetailScreen({ route, navigation }) {
         completed: Boolean(lesson.completed),
         isQuiz: Boolean(lesson.is_quiz),
         progress: Number(lesson.progress_percent || 0),
-        locked: false,
-      })),
-    [data?.lessons, trailId]
-  );
+        locked: !selfCompleted && !previousCompleted,
+      };
+    });
+  }, [data?.lessons, trailId]);
 
   const completedLessonsCount = useMemo(
     () => lessons.filter((lesson) => lesson.completed || lesson.progress >= 100).length,
