@@ -166,17 +166,17 @@ export default function VideoLessonScreen({ route, navigation }) {
       lesson?.max_position_seconds,
       lesson?.progress?.max_seek_seconds,
       lesson?.progress?.max_allowed_position_seconds,
-      lesson?.last_position_seconds,
+      lesson?.progress?.max_position_seconds,
     ];
     const value = candidates.find((item) => Number.isFinite(Number(item)));
     return Math.max(0, Math.floor(Number(value || 0)));
   }, [
-    lesson?.last_position_seconds,
     lesson?.max_allowed_position_seconds,
     lesson?.max_allowed_seek_seconds,
     lesson?.max_position_seconds,
     lesson?.max_seek_seconds,
     lesson?.progress?.max_allowed_position_seconds,
+    lesson?.progress?.max_position_seconds,
     lesson?.progress?.max_seek_seconds,
   ]);
 
@@ -219,6 +219,17 @@ export default function VideoLessonScreen({ route, navigation }) {
     if (Number.isFinite(normalizedPosition) && normalizedPosition >= 0) {
       lastPersistedSecondRef.current = Math.floor(normalizedPosition);
     }
+
+    const maxUnlockedCandidates = [
+      apiProgress?.max_position_seconds,
+      apiProgress?.max_allowed_position_seconds,
+      apiProgress?.max_seek_seconds,
+      apiProgress?.max_allowed_seek_seconds,
+    ];
+    const maxUnlockedValue = maxUnlockedCandidates.find((item) => Number.isFinite(Number(item)));
+    if (Number.isFinite(Number(maxUnlockedValue))) {
+      maxSeekAllowedRef.current = Math.max(maxSeekAllowedRef.current, Math.floor(Number(maxUnlockedValue)));
+    }
   }, []);
 
   const persistVideoProgress = useCallback(async (positionSeconds, options = {}) => {
@@ -247,7 +258,7 @@ export default function VideoLessonScreen({ route, navigation }) {
     lastPersistedSecondRef.current = Math.max(0, Math.floor(Number(lesson?.last_position_seconds || 0)));
     latestPlaybackSecondRef.current = lastPersistedSecondRef.current;
     previousPlaybackSecondRef.current = lastPersistedSecondRef.current;
-    maxSeekAllowedRef.current = Math.max(maxSeekFromApi, lastPersistedSecondRef.current);
+    maxSeekAllowedRef.current = maxSeekFromApi;
     lastPlayingRef.current = false;
     hasPersistedEndedRef.current = false;
     isSeekRollbackRunningRef.current = false;
@@ -323,7 +334,7 @@ export default function VideoLessonScreen({ route, navigation }) {
       const { currentTime, duration, isPlaying } = readSafePlayerState();
       const previousTime = previousPlaybackSecondRef.current;
       const delta = currentTime - previousTime;
-      const effectiveMaxSeek = Math.max(maxSeekAllowedRef.current, lastPersistedSecondRef.current);
+      const effectiveMaxSeek = maxSeekAllowedRef.current;
       const progressFromPlayback = duration > 0 ? (currentTime / duration) * 100 : 0;
       const progressFromApi = Number(lesson?.progress_percent || 0);
       const bestProgress = Math.max(progressFromPlayback, progressFromApi);
