@@ -20,6 +20,7 @@ export default function VideoLessonScreen({ route, navigation }) {
   const latestPlaybackSecondRef = useRef(0);
   const previousPlaybackSecondRef = useRef(0);
   const maxSeekAllowedRef = useRef(0);
+  const hasAppliedAutoResumeRef = useRef(false);
   const lastSeekWarningAtRef = useRef(0);
   const isSeekWarningOpenRef = useRef(false);
   const lastPlayingRef = useRef(false);
@@ -242,9 +243,56 @@ export default function VideoLessonScreen({ route, navigation }) {
     latestPlaybackSecondRef.current = lastPersistedSecondRef.current;
     previousPlaybackSecondRef.current = lastPersistedSecondRef.current;
     maxSeekAllowedRef.current = Math.max(maxSeekFromApi, lastPersistedSecondRef.current);
+    hasAppliedAutoResumeRef.current = false;
     lastPlayingRef.current = false;
     hasPersistedEndedRef.current = false;
   }, [lesson?.id, lesson?.last_position_seconds, maxSeekFromApi]);
+
+  useEffect(() => {
+    if (!videoUri || loading || error || !lesson?.id || hasAppliedAutoResumeRef.current) return;
+
+    const lastPosition = Math.max(0, Math.floor(Number(lesson?.last_position_seconds || 0)));
+    if (!lastPosition) {
+      hasAppliedAutoResumeRef.current = true;
+      return;
+    }
+
+    let timeoutId = null;
+    const interval = setInterval(() => {
+      try {
+        const duration = Math.max(0, Number(player?.duration || lesson?.duration_seconds || 0));
+        if (duration <= 0) return;
+        const target = Math.min(lastPosition, duration);
+
+        // Fluxo seguro para evitar bug nativo: começa em 0, avança e pausa.
+        player.currentTime = 0;
+        latestPlaybackSecondRef.current = 0;
+        previousPlaybackSecondRef.current = 0;
+        player.play();
+        clearInterval(interval);
+
+        timeoutId = setTimeout(() => {
+          try {
+            player.currentTime = target;
+            latestPlaybackSecondRef.current = target;
+            previousPlaybackSecondRef.current = target;
+            player.pause();
+          } catch {
+            // Ignora falha de seek/pause se o player for desmontado.
+          } finally {
+            hasAppliedAutoResumeRef.current = true;
+          }
+        }, 450);
+      } catch {
+        // Aguarda player ficar pronto.
+      }
+    }, 200);
+
+    return () => {
+      clearInterval(interval);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [error, lesson?.duration_seconds, lesson?.id, lesson?.last_position_seconds, loading, player, videoUri]);
 
   useEffect(() => {
     if (!videoUri || loading || error || !lesson?.id) return;
