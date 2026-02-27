@@ -8,7 +8,7 @@ import { getTrainingLessonById, saveTrainingLessonProgress } from '../services/m
 import { colors } from '../theme/tokens';
 
 export default function VideoLessonScreen({ route, navigation }) {
-  const AUTO_SAVE_INTERVAL_SECONDS = 12;
+  const AUTO_SAVE_INTERVAL_SECONDS = 15;
   const { trailId, lessonId } = route.params || {};
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,6 +26,7 @@ export default function VideoLessonScreen({ route, navigation }) {
   const lastPlayingRef = useRef(false);
   const isPersistingRef = useRef(false);
   const hasPersistedEndedRef = useRef(false);
+  const hasPersistedNinetyEightRef = useRef(false);
   const isSeekRollbackRunningRef = useRef(false);
   const seekRollbackCooldownUntilRef = useRef(0);
   const seekRollbackTimeoutRef = useRef(null);
@@ -261,6 +262,7 @@ export default function VideoLessonScreen({ route, navigation }) {
     maxSeekAllowedRef.current = maxSeekFromApi;
     lastPlayingRef.current = false;
     hasPersistedEndedRef.current = false;
+    hasPersistedNinetyEightRef.current = false;
     isSeekRollbackRunningRef.current = false;
     seekRollbackCooldownUntilRef.current = 0;
     if (seekRollbackTimeoutRef.current) {
@@ -409,6 +411,11 @@ export default function VideoLessonScreen({ route, navigation }) {
         void persistVideoProgress(currentTime);
       }
 
+      if (!hasPersistedNinetyEightRef.current && duration > 0 && currentTime / duration >= 0.98) {
+        hasPersistedNinetyEightRef.current = true;
+        void persistVideoProgress(currentTime, { force: true });
+      }
+
       if (lastPlayingRef.current && !isPlaying) {
         void persistVideoProgress(currentTime, { force: true });
       }
@@ -420,6 +427,9 @@ export default function VideoLessonScreen({ route, navigation }) {
 
       if (currentTime < duration - 3) {
         hasPersistedEndedRef.current = false;
+      }
+      if (duration > 0 && currentTime / duration < 0.97) {
+        hasPersistedNinetyEightRef.current = false;
       }
 
       lastPlayingRef.current = isPlaying;
@@ -593,7 +603,12 @@ export default function VideoLessonScreen({ route, navigation }) {
               <AppButton
               title={`Próxima Aula: ${nextLesson.title}${nextLesson.is_quiz ? ' (com perguntas)' : ''}`}
               disabled={!canGoToNextLesson}
-              onPress={() => navigation.replace('VideoLesson', { trailId: resolvedTrailId, lessonId: nextLesson.id })}
+              onPress={() => {
+                navigation.goBack();
+                setTimeout(() => {
+                  navigation.navigate('VideoLesson', { trailId: resolvedTrailId, lessonId: nextLesson.id });
+                }, 0);
+              }}
               left={<Feather name="skip-forward" size={16} color="#FFFFFF" />}
               />
               {!canGoToNextLesson && (
