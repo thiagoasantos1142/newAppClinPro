@@ -17,6 +17,7 @@ export default function VideoLessonScreen({ route, navigation }) {
   const [isThumbnailReady, setIsThumbnailReady] = useState(false);
   const [videoCompletionPercent, setVideoCompletionPercent] = useState(0);
   const lastPersistedSecondRef = useRef(0);
+  const highestReachedSecondRef = useRef(0);
   const latestPlaybackSecondRef = useRef(0);
   const previousPlaybackSecondRef = useRef(0);
   const maxSeekAllowedRef = useRef(0);
@@ -219,6 +220,7 @@ export default function VideoLessonScreen({ route, navigation }) {
     const normalizedPosition = Number(apiProgress?.last_position_seconds || 0);
     if (Number.isFinite(normalizedPosition) && normalizedPosition >= 0) {
       lastPersistedSecondRef.current = Math.floor(normalizedPosition);
+      highestReachedSecondRef.current = Math.max(highestReachedSecondRef.current, lastPersistedSecondRef.current);
     }
 
     const maxUnlockedCandidates = [
@@ -238,13 +240,18 @@ export default function VideoLessonScreen({ route, navigation }) {
     if (!lesson?.id) return null;
 
     const normalizedPosition = Math.max(0, Math.floor(Number(positionSeconds || 0)));
-    if (!force && normalizedPosition <= 0) return null;
-    if (!force && Math.abs(normalizedPosition - lastPersistedSecondRef.current) < AUTO_SAVE_INTERVAL_SECONDS) return null;
+    const safePosition = Math.max(
+      normalizedPosition,
+      lastPersistedSecondRef.current,
+      Math.floor(highestReachedSecondRef.current)
+    );
+    if (!force && safePosition <= 0) return null;
+    if (!force && Math.abs(safePosition - lastPersistedSecondRef.current) < AUTO_SAVE_INTERVAL_SECONDS) return null;
     if (isPersistingRef.current) return null;
 
     isPersistingRef.current = true;
     try {
-      const response = await saveTrainingLessonProgress(lesson.id, normalizedPosition);
+      const response = await saveTrainingLessonProgress(lesson.id, safePosition);
       applyProgressFromResponse(response);
       return response;
     } catch (err) {
@@ -257,6 +264,7 @@ export default function VideoLessonScreen({ route, navigation }) {
 
   useEffect(() => {
     lastPersistedSecondRef.current = Math.max(0, Math.floor(Number(lesson?.last_position_seconds || 0)));
+    highestReachedSecondRef.current = lastPersistedSecondRef.current;
     latestPlaybackSecondRef.current = lastPersistedSecondRef.current;
     previousPlaybackSecondRef.current = lastPersistedSecondRef.current;
     maxSeekAllowedRef.current = maxSeekFromApi;
@@ -315,6 +323,7 @@ export default function VideoLessonScreen({ route, navigation }) {
         if (currentTime >= 1) {
           player.currentTime = target;
           maxSeekAllowedRef.current = Math.max(maxSeekAllowedRef.current, target);
+          highestReachedSecondRef.current = Math.max(highestReachedSecondRef.current, target);
           latestPlaybackSecondRef.current = target;
           previousPlaybackSecondRef.current = target;
           player.pause();
@@ -401,6 +410,9 @@ export default function VideoLessonScreen({ route, navigation }) {
 
       latestPlaybackSecondRef.current = currentTime;
       previousPlaybackSecondRef.current = currentTime;
+      if (isPlaying && delta > 0 && delta <= 8) {
+        highestReachedSecondRef.current = Math.max(highestReachedSecondRef.current, currentTime);
+      }
 
       // Enquanto reproduz naturalmente, o teto local avanca junto.
       if (isPlaying && currentTime > maxSeekAllowedRef.current && delta > 0 && delta <= 8) {
