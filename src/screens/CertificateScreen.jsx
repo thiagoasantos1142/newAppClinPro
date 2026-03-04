@@ -1,38 +1,108 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppButton, AppCard } from '../components/ui.jsx';
+import { useAuth } from '../hooks/useAuth';
 import { getProfile } from '../services/modules/profile.service';
-import { getTrainingCertificateById } from '../services/modules/training.service';
+import { getTrainingTrailById } from '../services/modules/training.service';
+import {
+  createCertificate,
+  downloadCertificateById,
+  getCertificateById,
+  getMyCertificates,
+  shareCertificateFile,
+} from '../services/modules/certificates.service';
 import { colors } from '../theme/tokens';
 
 export default function CertificateScreen({ route, navigation }) {
   const { trailId, certificateId } = route.params || {};
+  const { user } = useAuth();
   const [certificate, setCertificate] = useState(null);
   const [studentName, setStudentName] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [downloading, setDownloading] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
       const load = async () => {
-        if (!certificateId) {
-          setError('Certificado não informado');
+        if (!certificateId && !trailId) {
+          setError('Certificado não informado.');
           setLoading(false);
           return;
         }
         setLoading(true);
         setError(null);
         try {
-          const [certResponse, profile] = await Promise.all([
-            getTrainingCertificateById(certificateId),
+          const [profile, trailResponse] = await Promise.all([
             getProfile().catch(() => null),
+            trailId ? getTrainingTrailById(trailId).catch(() => null) : Promise.resolve(null),
           ]);
+
+          const profileUserId =
+            Number(user?.id) ||
+            Number(profile?.user?.id) ||
+            Number(profile?.id) ||
+            Number(profile?.user_id) ||
+            null;
+
+          const trailTitle =
+            trailResponse?.trail?.title ||
+            trailResponse?.title ||
+            (trailId ? `Trilha ${trailId}` : 'Treinamento');
+
+          let resolvedCertificate = null;
+          if (certificateId != null) {
+            const certificateResponse = await getCertificateById(certificateId).catch(() => null);
+            resolvedCertificate =
+              certificateResponse?.data ||
+              certificateResponse?.certificate ||
+              null;
+          }
+
+          if (!resolvedCertificate) {
+            const myCertificatesResponse = await getMyCertificates().catch(() => null);
+            const myCertificates = Array.isArray(myCertificatesResponse?.data)
+              ? myCertificatesResponse.data
+              : Array.isArray(myCertificatesResponse)
+                ? myCertificatesResponse
+                : [];
+
+            resolvedCertificate =
+              myCertificates.find((item) => {
+                if (!item) return false;
+                if (!trailTitle || !item.course_name) return false;
+                return item.course_name.trim().toLowerCase() === trailTitle.trim().toLowerCase();
+              }) || null;
+          }
+
+          if (!resolvedCertificate) {
+            if (!profileUserId) {
+              throw new Error('Usuário não identificado para gerar certificado.');
+            }
+
+            const createResponse = await createCertificate({
+              user_id: profileUserId,
+              course_name: trailTitle,
+            });
+
+            resolvedCertificate =
+              createResponse?.data || createResponse?.certificate || null;
+          }
+
+          if (resolvedCertificate?.id) {
+            const certificateDetailsResponse = await getCertificateById(resolvedCertificate.id).catch(() => null);
+            resolvedCertificate =
+              certificateDetailsResponse?.data ||
+              certificateDetailsResponse?.certificate ||
+              resolvedCertificate;
+          }
+
           if (!isActive) return;
-          setCertificate(certResponse?.certificate || null);
-          setStudentName(profile?.name || certResponse?.certificate?.student_name || 'Profissional');
+          setCertificate(resolvedCertificate || null);
+          setStudentName(profile?.name || resolvedCertificate?.student_name || 'Profissional');
         } catch (err) {
           if (!isActive) return;
           setError(err?.response?.data?.message || err?.message || 'Erro ao carregar certificado');
@@ -44,14 +114,40 @@ export default function CertificateScreen({ route, navigation }) {
       return () => {
         isActive = false;
       };
-    }, [certificateId])
+    }, [certificateId, trailId, user?.id])
   );
 
   const cert = certificate;
-  const canDownload = !!cert?.download_url;
+  const canDownload = !!cert?.id || !!certificateId;
   const canShare = !!cert?.share_url;
 
-  const certIdLabel = useMemo(() => cert?.certificate_code || certificateId || '-', [cert?.certificate_code, certificateId]);
+  const onDownload = useCallback(async () => {
+    const targetId = cert?.id || certificateId;
+    if (!targetId || downloading) return;
+
+    setDownloading(true);
+    try {
+      const { uri } = await downloadCertificateById(targetId);
+      const shared = await shareCertificateFile(uri);
+
+      if (!shared) {
+        Alert.alert('Download concluído', `Arquivo salvo em: ${uri}`);
+      }
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Não foi possível baixar o certificado.';
+      Alert.alert('Erro ao baixar certificado', message);
+    } finally {
+      setDownloading(false);
+    }
+  }, [cert?.id, certificateId, downloading]);
+
+  const certIdLabel = useMemo(
+    () => cert?.certificate_code || cert?.verification_code || certificateId || '-',
+    [cert?.certificate_code, cert?.verification_code, certificateId]
+  );
 
   if (loading) {
     return (
@@ -91,7 +187,7 @@ export default function CertificateScreen({ route, navigation }) {
 
           <View style={styles.certSection}>
             <Text style={styles.certMuted}>concluiu com sucesso o curso de</Text>
-            <Text style={styles.certCourse}>{cert.trail_title || (trailId ? `Trilha ${trailId}` : 'Treinamento')}</Text>
+            <Text style={styles.certCourse}>{cert.trail_title || cert.course_name || (trailId ? `Trilha ${trailId}` : 'Treinamento')}</Text>
           </View>
 
           <View style={styles.certGrid}>
@@ -113,7 +209,12 @@ export default function CertificateScreen({ route, navigation }) {
           <Text style={styles.infoBody}>Este certificado comprova que você concluiu todos os módulos e passou na avaliação final.</Text>
         </AppCard>
 
-        <AppButton title="Baixar Certificado" disabled={!canDownload} left={<Feather name="download" size={16} color="#FFF" />} onPress={() => canDownload && Linking.openURL(cert.download_url)} />
+        <AppButton
+          title={downloading ? 'Baixando...' : 'Baixar Certificado'}
+          disabled={!canDownload || downloading}
+          left={<Feather name="download" size={16} color="#FFF" />}
+          onPress={() => canDownload && onDownload()}
+        />
         <AppButton title="Compartilhar" disabled={!canShare} style={{ backgroundColor: '#2563EB' }} left={<Feather name="share-2" size={16} color="#FFF" />} onPress={() => canShare && Linking.openURL(cert.share_url)} />
         <AppButton title="Voltar aos Treinamentos" variant="secondary" onPress={() => navigation.navigate('TrainingTab')} left={<Feather name="home" size={16} color={colors.cardForeground} />} />
       </ScrollView>

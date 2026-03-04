@@ -6,6 +6,8 @@ import { AppCard, AppButton, ProgressBar } from '../components/ui.jsx';
 import { getTrainingTrailById } from '../services/modules/training.service';
 import { colors } from '../theme/tokens';
 
+const TEMP_ENABLE_CERTIFICATE_ACCESS = true;
+
 export default function TrailDetailScreen({ route, navigation }) {
   const { trailId } = route.params || {};
   const [data, setData] = useState(null);
@@ -88,6 +90,7 @@ export default function TrailDetailScreen({ route, navigation }) {
     () => lessons.filter((lesson) => lesson.completed || lesson.progress >= 100).length,
     [lessons]
   );
+  const canOpenCertificate = Boolean(trail?.completed) || TEMP_ENABLE_CERTIFICATE_ACCESS;
 
   const onOpenLesson = (lesson) => {
     if (lesson.locked) return;
@@ -127,9 +130,9 @@ export default function TrailDetailScreen({ route, navigation }) {
             </View>
             <ProgressBar value={trail.progress} style={{ marginTop: 8 }} />
             <Pressable
-              disabled={!trail.completed}
+              disabled={!canOpenCertificate}
               onPress={() => navigation.navigate('Certificate', { trailId: trail.id })}
-              style={[styles.certificateCard, !trail.completed && styles.certificateCardDisabled]}
+              style={[styles.certificateCard, !canOpenCertificate && styles.certificateCardDisabled]}
             >
               <View style={{ flex: 1 }}>
                 <Text style={styles.certificateTitle}>Certificado</Text>
