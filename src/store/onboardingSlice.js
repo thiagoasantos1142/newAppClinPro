@@ -51,6 +51,21 @@ export const refreshOnboarding = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(getErrorMessage(err));
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { onboarding, auth } = getState();
+
+      if (!auth?.token) {
+        return false;
+      }
+
+      if (onboarding?.loading) {
+        return false;
+      }
+
+      return true;
+    },
   }
 );
 
@@ -71,10 +86,16 @@ const onboardingSlice = createSlice({
   name: 'onboarding',
   initialState: {
     status: null,
-    loading: true,
+    loading: false,
     error: null,
   },
-  reducers: {},
+  reducers: {
+    resetOnboardingState: () => ({
+      status: null,
+      loading: false,
+      error: null,
+    }),
+  },
   extraReducers: (builder) => {
     builder
       .addCase(refreshOnboarding.pending, (state) => {
@@ -105,4 +126,5 @@ const onboardingSlice = createSlice({
   },
 });
 
+export const { resetOnboardingState } = onboardingSlice.actions;
 export default onboardingSlice.reducer;

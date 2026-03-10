@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -6,10 +6,12 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useDispatch } from 'react-redux';
 import { useAuth } from '../hooks/useAuth';
 import { colors } from '../theme/tokens';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { getRouteForStep } from './onboardingStepMap';
+import { refreshOnboarding } from '../store/onboardingSlice';
 
 import HomeScreen from '../screens/HomeScreen.jsx';
 import ServiceDetailScreen from '../screens/ServiceDetailScreen.jsx';
@@ -195,7 +197,20 @@ function OnboardingFlow({ initialRouteName }) {
 }
 
 function OnboardingGate() {
+  const dispatch = useDispatch();
+  const { isAuthenticated } = useAuth();
   const { status, loading, error, refresh } = useOnboarding();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    if (!status && !loading) {
+      void dispatch(refreshOnboarding());
+    }
+  }, [dispatch, isAuthenticated, loading, status]);
+
   const initialRouteName =
     status?.steps?.welcome && status?.current_step === 'welcome'
       ? 'OnboardingQuestionsEntry'

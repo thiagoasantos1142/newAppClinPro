@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   completeOnboardingStep as completeOnboardingStepThunk,
@@ -8,10 +8,6 @@ import {
 export const useOnboarding = () => {
   const dispatch = useDispatch();
   const state = useSelector((rootState) => rootState.onboarding);
-
-  useEffect(() => {
-    void dispatch(refreshOnboarding());
-  }, [dispatch]);
 
   return useMemo(
     () => ({

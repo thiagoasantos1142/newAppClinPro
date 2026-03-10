@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { clearAuthSession, setAuthLoading, setAuthSession } from './authSlice';
+import { resetOnboardingState } from './onboardingSlice';
 import {
   logoutAuth as logoutAuthApi,
   refreshAuth as refreshAuthApi,
@@ -92,5 +93,6 @@ export const logout = () => async (dispatch, getState) => {
     SecureStore.deleteItemAsync(AUTH_REFRESH_TOKEN_KEY),
   ]);
   setAuthToken(null);
+  dispatch(resetOnboardingState());
   dispatch(clearAuthSession());
 };
