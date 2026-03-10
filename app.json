@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "ClinApp",
-    "slug": "ClinApp",
+    "slug": "clin-pro-2026",
     "version": "1.0.0",
     "runtimeVersion": {
       "policy": "appVersion"
@@ -9,7 +9,8 @@
     "updates": {
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/4a67a252-7a25-4c24-b41d-2a9fad8c110f"
     },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -28,7 +29,13 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -38,6 +45,12 @@
       "expo-video",
       "expo-audio",
       "expo-asset"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "4a67a252-7a25-4c24-b41d-2a9fad8c110f"
+      }
+    },
+    "owner": "clin"
   }
 }
