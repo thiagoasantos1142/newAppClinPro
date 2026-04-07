@@ -28,14 +28,16 @@ export default function OnboardingQuestionsEntryScreen({ navigation }) {
       // liberamos o fluxo de questions.
       if (status.current_step !== 'questions') {
         if (status.current_step === 'welcome' && status?.steps?.welcome) {
-          navigation.replace('QuestionsClients');
+          // navigation.replace('QuestionsClients');
+          navigation.replace('MainTabs');
           return;
         }
       navigation.replace(getRouteForStep(status.current_step));
       return;
     }
 
-    navigation.replace('QuestionsClients');
+    // navigation.replace('QuestionsClients');
+    navigation.replace('MainTabs');
   }, [status, navigation]);
 
   if (isLoading) {

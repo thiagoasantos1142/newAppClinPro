@@ -1,8 +1,10 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { DrawerActions, useFocusEffect } from '@react-navigation/native';
 import { RequireClinPro } from '../components/RequireClinPro.jsx';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import AppScreenHeader from '../components/AppScreenHeader.jsx';
+import HeaderActionButton from '../components/HeaderActionButton.jsx';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
 import { acceptServiceById, getAvailableServices } from '../services/modules/services.service';
@@ -137,20 +139,17 @@ export default function AvailableServicesImprovedScreen({ navigation }) {
   return (
     <RequireClinPro>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <View style={styles.titleRow}>
-              <View style={styles.menuSlot} />
-              <Text style={styles.headerTitle}>Serviços Disponíveis</Text>
-            </View>
-            <Pressable onPress={() => setShowFilters(true)} style={styles.filterButton}>
-              <Feather name="filter" size={18} color="#FFFFFF" />
-            </Pressable>
-          </View>
-          <Text style={styles.headerSubtitle}>
-            {loading ? 'Carregando serviços...' : `${pagination.total || list.length} serviços próximos a você`}
-          </Text>
-        </View>
+        <AppScreenHeader
+          title="Serviços Disponíveis"
+          subtitle={loading ? 'Carregando serviços...' : `${pagination.total || list.length} serviços próximos a você`}
+          showBack={false}
+          leftContent={<HeaderActionButton onPress={() => navigation.dispatch(DrawerActions.openDrawer())} icon="menu" />}
+          titleStyle={styles.headerTitle}
+          subtitleStyle={styles.headerSubtitle}
+          rightContent={
+            <HeaderActionButton onPress={() => setShowFilters(true)} icon="filter" />
+          }
+        />
 
         <ScrollView contentContainerStyle={styles.content} onScroll={handleScroll} scrollEventThrottle={16}>
           {loading ? (
@@ -309,14 +308,6 @@ const styles = StyleSheet.create({
   menuSlot: { width: 46 },
   headerTitle: { color: '#FFF', fontSize: 25, fontWeight: '700' },
   headerSubtitle: { color: 'rgba(255,255,255,0.85)', marginTop: 4, fontSize: 13, marginLeft: 46 },
-  filterButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   content: { padding: 16, gap: 12, paddingBottom: 28 },
   infoCard: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   errorCard: { borderWidth: 1, borderColor: '#FECACA', backgroundColor: '#FFF7F7' },

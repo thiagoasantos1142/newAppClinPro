@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import AppScreenHeader from '../components/AppScreenHeader.jsx';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
 import { createCommunityPost } from '../services/modules/community.service';
@@ -38,17 +39,15 @@ export default function CreatePostScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Feather name="chevron-left" size={20} color="#FFFFFF" />
-          </Pressable>
+      <AppScreenHeader
+        onBack={() => navigation.goBack()}
+        titleContent={
           <View>
             <Text style={styles.headerTitle}>Criar Publicação</Text>
             <Text style={styles.headerSubtitle}>Compartilhe uma dica com a comunidade</Text>
           </View>
-        </View>
-      </View>
+        }
+      />
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <AppCard>

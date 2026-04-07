@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import AppScreenHeader from '../components/AppScreenHeader.jsx';
 import { AppCard, AppButton, ProgressBar } from '../components/ui.jsx';
 import { getTrainingTrailById } from '../services/modules/training.service';
 import { colors } from '../theme/tokens';
@@ -96,14 +97,7 @@ export default function TrailDetailScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Feather name="chevron-left" size={22} color="#FFFFFF" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Detalhes da Trilha</Text>
-        </View>
-      </View>
+      <AppScreenHeader title="Detalhes da Trilha" onBack={() => navigation.goBack()} />
 
       {loading ? (
         <View style={styles.centerState}>

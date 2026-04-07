@@ -29,7 +29,8 @@ export default function OnboardingWelcomeScreen({ navigation }) {
     if (status?.steps?.welcome && status.current_step === 'welcome') {
       navigation.reset({
         index: 0,
-        routes: [{ name: 'QuestionsClients' }],
+        // routes: [{ name: 'QuestionsClients' }],
+        routes: [{ name: 'MainTabs' }],
       });
       return;
     }
@@ -52,7 +53,8 @@ export default function OnboardingWelcomeScreen({ navigation }) {
         if (currentStatus.current_step === 'welcome') {
           navigation.reset({
             index: 0,
-            routes: [{ name: 'QuestionsClients' }],
+            // routes: [{ name: 'QuestionsClients' }],
+            routes: [{ name: 'MainTabs' }],
           });
           return;
         }

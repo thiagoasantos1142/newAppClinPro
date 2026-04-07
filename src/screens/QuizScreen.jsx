@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import AppScreenHeader from '../components/AppScreenHeader.jsx';
 import { AppButton, AppCard, ProgressBar } from '../components/ui.jsx';
 import { getTrainingQuizById, submitTrainingQuizById } from '../services/modules/training.service';
 import { colors } from '../theme/tokens';
@@ -103,19 +104,19 @@ export default function QuizScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Feather name="chevron-left" size={22} color="#FFFFFF" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Avaliação</Text>
-        </View>
-        <View style={styles.rowBetween}>
-          <Text style={styles.headerMeta}>Questão {currentQuestion + 1} de {questions.length}</Text>
-          <Text style={styles.headerMeta}>{Math.round(progress)}%</Text>
-        </View>
-        <ProgressBar value={progress} color="#FFFFFF" style={{ marginTop: 8, backgroundColor: 'rgba(255,255,255,0.3)' }} />
-      </View>
+      <AppScreenHeader
+        title="Avaliação"
+        onBack={() => navigation.goBack()}
+        extraContent={
+          <>
+            <View style={styles.rowBetween}>
+              <Text style={styles.headerMeta}>Questão {currentQuestion + 1} de {questions.length}</Text>
+              <Text style={styles.headerMeta}>{Math.round(progress)}%</Text>
+            </View>
+            <ProgressBar value={progress} color="#FFFFFF" style={{ marginTop: 8, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+          </>
+        }
+      />
 
       <ScrollView contentContainerStyle={styles.content}>
         <AppCard>

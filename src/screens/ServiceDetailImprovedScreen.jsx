@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import AppScreenHeader from '../components/AppScreenHeader.jsx';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
 import { acceptServiceById, getServiceById, updateServiceStatus } from '../services/modules/services.service';
@@ -124,17 +125,15 @@ export default function ServiceDetailImprovedScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Feather name="chevron-left" size={20} color="#FFFFFF" />
-          </Pressable>
+      <AppScreenHeader
+        onBack={() => navigation.goBack()}
+        titleContent={
           <View>
             <Text style={styles.headerTitle}>Detalhes do Serviço</Text>
             <Text style={styles.headerSubtitle}>{view?.distanceHeader || 'Carregando...'}</Text>
           </View>
-        </View>
-      </View>
+        }
+      />
 
       {loading ? (
         <View style={styles.centerState}>

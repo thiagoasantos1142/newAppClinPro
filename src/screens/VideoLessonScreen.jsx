@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Alert, AppState, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import AppScreenHeader from '../components/AppScreenHeader.jsx';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { getTrainingLessonById, saveTrainingLessonProgress } from '../services/modules/training.service';
@@ -482,17 +483,15 @@ export default function VideoLessonScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Feather name="chevron-left" size={22} color="#FFFFFF" />
-          </Pressable>
+      <AppScreenHeader
+        onBack={() => navigation.goBack()}
+        titleContent={
           <View>
             <Text style={styles.trailText}>{resolvedTrailId ? `Trilha ${resolvedTrailId}` : 'Treinamento'}</Text>
             <Text style={styles.headerTitle}>Aula</Text>
           </View>
-        </View>
-      </View>
+        }
+      />
 
       <View style={styles.videoBox}>
         {videoUri && !loading && !error ? (

@@ -111,10 +111,6 @@ function MainTabs({ navigation }) {
         <Tab.Screen name="CommunityTab" component={CommunityFeedScreen} options={{ title: 'Comunidade' }} />
         <Tab.Screen name="ProfileTab" component={require('../screens/ProfileScreen.jsx').default} options={{ title: 'Perfil' }} />
       </Tab.Navigator>
-
-      <Pressable onPress={() => navigation.openDrawer()} style={[styles.menuButton, { top: insets.top + 2 }]}>
-        <Feather name="menu" size={22} color="#FFFFFF" />
-      </Pressable>
     </View>
   );
 }
@@ -305,16 +301,5 @@ const styles = StyleSheet.create({
   },
   tabIconWrapActive: {
     backgroundColor: 'rgba(31,128,234,0.12)',
-  },
-  menuButton: {
-    position: 'absolute',
-    left: 12,
-    zIndex: 30,
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

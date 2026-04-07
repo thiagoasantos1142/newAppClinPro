@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import AppScreenHeader from '../../components/AppScreenHeader.jsx';
 import { AppButton, AppCard, Badge, ProgressBar } from '../../components/ui.jsx';
 import { colors } from '../../theme/tokens';
 
@@ -32,19 +33,7 @@ export default function ModuleTemplate({
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          {shouldShowBack ? (
-            <Pressable onPress={onBack} style={styles.backButton}>
-              <Feather name="chevron-left" size={22} color="#FFFFFF" />
-            </Pressable>
-          ) : (
-            <View style={styles.menuSlot} />
-          )}
-          <Text style={styles.headerTitle}>{title}</Text>
-        </View>
-        {!!subtitle && <Text style={styles.headerSubtitle}>{subtitle}</Text>}
-      </View>
+      <AppScreenHeader title={title} subtitle={subtitle} onBack={onBack} showBack={shouldShowBack} />
 
       <ScrollView contentContainerStyle={styles.content}>
         {hero ? (
@@ -97,12 +86,6 @@ export default function ModuleTemplate({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { backgroundColor: colors.primary, paddingTop: 56, paddingHorizontal: 20, paddingBottom: 20 },
-  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
-  menuSlot: { width: 46 },
-  backButton: { width: 38, height: 38, borderRadius: 12, marginRight: 8, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: '#FFF', fontSize: 24, fontWeight: '700' },
-  headerSubtitle: { color: 'rgba(255,255,255,0.85)', marginTop: 4, fontSize: 13, marginLeft: 46 },
   content: { padding: 16, gap: 12, paddingBottom: 28 },
   heroTitle: { color: colors.mutedForeground, fontSize: 12 },
   heroValue: { color: colors.primary, fontSize: 32, fontWeight: '800', marginTop: 4 },

@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import HeaderActionButton from '../components/HeaderActionButton.jsx';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '../components/ui.jsx';
 import { colors, radius, spacing, typography } from '../theme/tokens';
@@ -144,9 +144,7 @@ export default function OnboardingProfileScreen({ navigation }) {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <View style={styles.headerTop}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Feather name="chevron-left" size={24} color={colors.primaryForeground} />
-          </Pressable>
+          <HeaderActionButton onPress={() => navigation.goBack()} icon="chevron-left" size={24} style={styles.backButton} />
           <View style={styles.headerTextWrap}>
             <Text style={styles.headerTitle}>Complete seu perfil</Text>
             <Text style={styles.headerSubtitle}>Isso ajuda clientes a te conhecerem</Text>
@@ -365,14 +363,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginBottom: spacing.md,
   },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.xl,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  backButton: {},
   headerTextWrap: {
     flex: 1,
   },

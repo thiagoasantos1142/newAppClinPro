@@ -1,8 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { DrawerActions, useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RequireClinPro } from '../components/RequireClinPro.jsx';
+import AppScreenHeader from '../components/AppScreenHeader.jsx';
+import HeaderActionButton from '../components/HeaderActionButton.jsx';
 import { AppCard, Badge, ProgressBar } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
 import { getTrainingTrails } from '../services/modules/training.service';
@@ -77,18 +79,19 @@ export default function TrainingListScreen({ navigation }) {
   return (
     <RequireClinPro>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerTopRow}>
-            <View style={styles.headerTitleRow}>
-              <View style={styles.menuSlot} />
-              <Text style={styles.headerTitle}>Treinamentos</Text>
-            </View>
-            <View style={styles.headerIconBox}>
+        <AppScreenHeader
+          title="Treinamentos"
+          subtitle="Aprenda e desenvolva suas habilidades"
+          showBack={false}
+          leftContent={<HeaderActionButton onPress={() => navigation.dispatch(DrawerActions.openDrawer())} icon="menu" />}
+          titleStyle={styles.headerTitle}
+          subtitleStyle={styles.headerSubtitle}
+          rightContent={
+            <HeaderActionButton>
               <MaterialCommunityIcons name="school-outline" size={22} color="#FFF" />
-            </View>
-          </View>
-          <Text style={styles.headerSubtitle}>Aprenda e desenvolva suas habilidades</Text>
-        </View>
+            </HeaderActionButton>
+          }
+        />
 
         <ScrollView contentContainerStyle={styles.content}>
           {loading ? (
@@ -204,7 +207,6 @@ const styles = StyleSheet.create({
   rowTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   headerTitle: { color: '#FFF', fontSize: 26, fontWeight: '700' },
   headerSubtitle: { color: 'rgba(255,255,255,0.85)', marginTop: 4, fontSize: 13, marginLeft: 46 },
-  headerIconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   content: { padding: 16, gap: 16, paddingBottom: 28 },
   infoCard: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   errorCard: { borderWidth: 1, borderColor: '#FECACA', backgroundColor: '#FFF7F7' },

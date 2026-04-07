@@ -4,6 +4,7 @@ import moment from 'moment';
 import 'moment/locale/pt-br';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import AppScreenHeader from '../components/AppScreenHeader.jsx';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
 import { createScheduleBlock, deleteScheduleBlock, getScheduleBlocks } from '../services/modules/schedule.service';
@@ -82,15 +83,11 @@ export default function BlockTimeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Feather name="chevron-left" size={22} color="#FFFFFF" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Bloquear Horário</Text>
-        </View>
-        <Text style={styles.headerSubtitle}>Defina períodos indisponíveis</Text>
-      </View>
+      <AppScreenHeader
+        title="Bloquear Horário"
+        subtitle="Defina períodos indisponíveis"
+        onBack={() => navigation.goBack()}
+      />
 
       <ScrollView contentContainerStyle={styles.content}>
         <AppCard>

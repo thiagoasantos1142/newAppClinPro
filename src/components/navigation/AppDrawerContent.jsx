@@ -1,15 +1,36 @@
-// Drawer menu item component
+import React, { useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../../hooks/useAuth';
+import { colors } from '../../theme/tokens';
+import { getProfile } from '../../services/modules/profile.service';
+
+function resolveItemColor({ active, danger }) {
+  if (danger) return colors.danger;
+  if (active) return '#FFFFFF';
+  return colors.cardForeground;
+}
+
+function DrawerIcon({ library = 'feather', name, color }) {
+  if (library === 'material') {
+    return <MaterialCommunityIcons name={name} size={18} color={color} />;
+  }
+
+  return <Feather name={name} size={18} color={color} />;
+}
+
 function Item({ label, icon, active, danger, onPress }) {
+  const iconColor = resolveItemColor({ active, danger });
+
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.item,
-        active && styles.itemActive,
-        pressed && styles.pressed,
-      ]}
+      style={({ pressed }) => [styles.item, active && styles.itemActive, pressed && styles.pressed]}
     >
-      <View style={styles.itemIcon}>{icon}</View>
+      <View style={styles.itemIcon}>
+        <DrawerIcon library={icon.library} name={icon.name} color={iconColor} />
+      </View>
       <Text
         style={[
           styles.itemLabel,
@@ -19,22 +40,72 @@ function Item({ label, icon, active, danger, onPress }) {
       >
         {label}
       </Text>
+      {active ? (
+        <Feather name="chevron-right" size={16} color="#FFFFFF" />
+      ) : null}
     </Pressable>
   );
 }
-import React, { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../../theme/tokens';
-import { getProfile } from '../../services/modules/profile.service';
 
 function getActiveKeyFromNestedState(state) {
   const drawerRoute = state?.routes?.[state.index ?? 0];
   const stackState = drawerRoute?.state;
   const stackRoute = stackState?.routes?.[stackState?.index ?? 0];
   const currentStackScreen = stackRoute?.name ?? 'MainTabs';
+  const currentTabScreen = stackRoute?.params?.screen;
+
+  switch (currentTabScreen || currentStackScreen) {
+    case 'HomeTab':
+      return 'home';
+    case 'ServicesTab':
+    case 'AvailableServicesImproved':
+    case 'ServiceDetail':
+    case 'ServiceDetailImproved':
+    case 'MyServices':
+    case 'ServiceHistory':
+      return 'services';
+    case 'TrainingTab':
+    case 'TrailDetail':
+    case 'VideoLesson':
+    case 'Quiz':
+    case 'QuizResult':
+    case 'Certificate':
+      return 'training';
+    case 'WeeklySchedule':
+    case 'DailySchedule':
+    case 'BlockTime':
+    case 'WorkloadOverview':
+      return 'schedule';
+    case 'CommunityTab':
+    case 'CommunityFeed':
+    case 'CreatePost':
+    case 'PostDetail':
+      return 'community';
+    case 'ProfileTab':
+    case 'ProfileImproved':
+    case 'PersonalData':
+      return 'profile';
+    case 'FinancialDashboard':
+    case 'Transactions':
+    case 'PaymentDetail':
+    case 'MEIControl':
+      return 'financial';
+    case 'DigitalAccountOverview':
+    case 'TransactionHistory':
+    case 'TransferMoney':
+    case 'AccountDetails':
+    case 'AccountActivation':
+      return 'bank';
+    case 'ReputationOverview':
+    case 'ReviewsList':
+    case 'VerificationStatus':
+    case 'ProfessionalScore':
+      return 'reputation';
+    case 'VideoAvTest':
+      return 'video-av-test';
+    default:
+      return null;
+  }
 }
 
 export default function AppDrawerContent(props) {
@@ -69,39 +140,31 @@ export default function AppDrawerContent(props) {
 
   const mainMenuItems = useMemo(
     () => [
-      { key: 'home', label: 'Home', type: 'tab', target: 'HomeTab', icon: <Feather name="home" size={18} color="#FFFFFF" /> },
-      { key: 'services', label: 'Serviços', type: 'tab', target: 'ServicesTab', icon: <Feather name="briefcase" size={18} color="#FFFFFF" /> },
-      { key: 'training', label: 'Treinamentos', type: 'tab', target: 'TrainingTab', icon: <MaterialCommunityIcons name="school-outline" size={18} color="#FFFFFF" /> },
-      { key: 'schedule', label: 'Agenda', type: 'screen', target: 'WeeklySchedule', icon: <Feather name="calendar" size={18} color="#FFFFFF" /> },
-      { key: 'community', label: 'Comunidade', type: 'tab', target: 'CommunityTab', icon: <Feather name="users" size={18} color="#FFFFFF" /> },
-      { key: 'profile', label: 'Perfil', type: 'tab', target: 'ProfileTab', icon: <Feather name="user" size={18} color="#FFFFFF" /> },
+      { key: 'home', label: 'Home', type: 'tab', target: 'HomeTab', icon: { library: 'feather', name: 'home' } },
+      { key: 'services', label: 'Serviços', type: 'tab', target: 'ServicesTab', icon: { library: 'feather', name: 'briefcase' } },
+      { key: 'training', label: 'Treinamentos', type: 'tab', target: 'TrainingTab', icon: { library: 'material', name: 'school-outline' } },
+      { key: 'schedule', label: 'Agenda', type: 'screen', target: 'WeeklySchedule', icon: { library: 'feather', name: 'calendar' } },
+      { key: 'community', label: 'Comunidade', type: 'tab', target: 'CommunityTab', icon: { library: 'feather', name: 'users' } },
+      { key: 'profile', label: 'Perfil', type: 'tab', target: 'ProfileTab', icon: { library: 'feather', name: 'user' } },
     ],
     []
   );
 
-  // ...existing code...
-
-  // ...existing code...
-
-  // ...existing code...
-
-  // ...existing code...
-
   const moduleItems = useMemo(
     () => [
-      { key: 'financial', label: 'Financeiro', type: 'screen', target: 'FinancialDashboard', icon: <Feather name="dollar-sign" size={18} color="#FFFFFF" /> },
-      { key: 'bank', label: 'Banco Digital', type: 'screen', target: 'DigitalAccountOverview', icon: <Feather name="credit-card" size={18} color="#FFFFFF" /> },
-      { key: 'reputation', label: 'Reputação', type: 'screen', target: 'ReputationOverview', icon: <Feather name="star" size={18} color="#FFFFFF" /> },
-      { key: 'video-av-test', label: 'Teste Video AV', type: 'screen', target: 'VideoAvTest', icon: <Feather name="play-circle" size={18} color="#FFFFFF" /> },
+      { key: 'financial', label: 'Financeiro', type: 'screen', target: 'FinancialDashboard', icon: { library: 'feather', name: 'dollar-sign' } },
+      { key: 'bank', label: 'Banco Digital', type: 'screen', target: 'DigitalAccountOverview', icon: { library: 'material', name: 'office-building-outline' } },
+      { key: 'reputation', label: 'Reputação', type: 'screen', target: 'ReputationOverview', icon: { library: 'feather', name: 'star' } },
+      { key: 'video-av-test', label: 'Teste Video AV', type: 'screen', target: 'VideoAvTest', icon: { library: 'feather', name: 'play-circle' } },
     ],
     []
   );
 
   const settingsItems = useMemo(
     () => [
-      { key: 'settings', label: 'Configurações', type: 'tab', target: 'ProfileTab', icon: <Feather name="settings" size={18} color={colors.cardForeground} /> },
-      { key: 'help', label: 'Ajuda', type: 'tab', target: 'ProfileTab', icon: <Feather name="help-circle" size={18} color={colors.cardForeground} /> },
-      { key: 'logout', label: 'Sair', type: 'tab', target: 'HomeTab', icon: <Feather name="log-out" size={18} color={colors.danger} />, danger: true },
+      { key: 'settings', label: 'Configurações', type: 'tab', target: 'ProfileTab', icon: { library: 'feather', name: 'settings' } },
+      { key: 'help', label: 'Ajuda', type: 'tab', target: 'ProfileTab', icon: { library: 'feather', name: 'help-circle' } },
+      { key: 'logout', label: 'Sair', type: 'tab', target: 'HomeTab', icon: { library: 'feather', name: 'log-out' }, danger: true },
     ],
     []
   );
@@ -112,11 +175,13 @@ export default function AppDrawerContent(props) {
       props.navigation.closeDrawer();
       return;
     }
+
     if (item.type === 'tab') {
       props.navigation.navigate('RootStack', { screen: 'MainTabs', params: { screen: item.target } });
     } else {
       props.navigation.navigate('RootStack', { screen: item.target });
     }
+
     props.navigation.closeDrawer();
   };
 
@@ -133,7 +198,9 @@ export default function AppDrawerContent(props) {
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <View style={styles.headerTop}>
-          <View style={styles.avatar}><Feather name="user" size={28} color="#FFFFFF" /></View>
+          <View style={styles.avatar}>
+            <Feather name="user" size={28} color="#FFFFFF" />
+          </View>
           <Pressable onPress={() => props.navigation.closeDrawer()} style={styles.closeBtn}>
             <Feather name="x" size={18} color="#FFFFFF" />
           </Pressable>
@@ -145,10 +212,7 @@ export default function AppDrawerContent(props) {
         </View>
       </View>
 
-      <View
-        style={styles.middleWrap}
-        onLayout={(e) => setMiddleViewportHeight(e.nativeEvent.layout.height)}
-      >
+      <View style={styles.middleWrap} onLayout={(e) => setMiddleViewportHeight(e.nativeEvent.layout.height)}>
         <ScrollView
           style={styles.middleScroll}
           contentContainerStyle={styles.middleContent}
@@ -160,12 +224,24 @@ export default function AppDrawerContent(props) {
         >
           <Text style={styles.sectionTitle}>MENU PRINCIPAL</Text>
           {mainMenuItems.map((item) => (
-            <Item key={item.key} label={item.label} icon={item.icon} active={activeKey === item.key} onPress={() => navigateItem(item)} />
+            <Item
+              key={item.key}
+              label={item.label}
+              icon={item.icon}
+              active={activeKey === item.key}
+              onPress={() => navigateItem(item)}
+            />
           ))}
 
           <Text style={[styles.sectionTitle, { marginTop: 16 }]}>MÓDULOS</Text>
           {moduleItems.map((item) => (
-            <Item key={item.key} label={item.label} icon={item.icon} active={activeKey === item.key} onPress={() => navigateItem(item)} />
+            <Item
+              key={item.key}
+              label={item.label}
+              icon={item.icon}
+              active={activeKey === item.key}
+              onPress={() => navigateItem(item)}
+            />
           ))}
         </ScrollView>
 
@@ -179,7 +255,13 @@ export default function AppDrawerContent(props) {
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <View style={styles.separator} />
         {settingsItems.map((item) => (
-          <Item key={item.key} label={item.label} icon={item.icon} danger={item.danger} onPress={() => navigateItem(item)} />
+          <Item
+            key={item.key}
+            label={item.label}
+            icon={item.icon}
+            danger={item.danger}
+            onPress={() => navigateItem(item)}
+          />
         ))}
 
         <Text style={styles.version}>Clin Pro v1.0.0</Text>

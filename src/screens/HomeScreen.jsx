@@ -1,8 +1,10 @@
 import React, { useCallback, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { DrawerActions, useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RequireClinPro } from '../components/RequireClinPro.jsx';
+import AppScreenHeader from '../components/AppScreenHeader.jsx';
+import HeaderActionButton from '../components/HeaderActionButton.jsx';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
 import { getHomeDashboard } from '../services/modules/home.service';
@@ -53,13 +55,14 @@ export default function HomeScreen({ navigation }) {
   return (
     <RequireClinPro>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerTitleRow}>
-            <View style={styles.menuSlot} />
-            <Text style={styles.headerTitle}>Olá, {greetingName}</Text>
-          </View>
-          <Text style={styles.headerSubtitle}>Vamos organizar sua semana?</Text>
-        </View>
+        <AppScreenHeader
+          title={`Olá, ${greetingName}`}
+          subtitle="Vamos organizar sua semana?"
+          showBack={false}
+          leftContent={<HeaderActionButton onPress={() => navigation.dispatch(DrawerActions.openDrawer())} icon="menu" />}
+          titleStyle={styles.headerTitle}
+          subtitleStyle={styles.headerSubtitle}
+        />
 
         <ScrollView contentContainerStyle={styles.content}>
           {loading ? (

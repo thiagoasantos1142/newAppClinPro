@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import AppScreenHeader from '../components/AppScreenHeader.jsx';
 import { services } from '../data/mockData';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
@@ -8,13 +9,13 @@ import { colors } from '../theme/tokens';
 export default function AvailableServicesScreen({ navigation }) {
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <View style={styles.menuSlot} />
-          <Text style={styles.headerTitle}>Serviços Disponíveis</Text>
-        </View>
-        <Text style={styles.headerSubtitle}>{services.length} serviços disponíveis</Text>
-      </View>
+      <AppScreenHeader
+        title="Serviços Disponíveis"
+        subtitle={`${services.length} serviços disponíveis`}
+        showBack={false}
+        titleStyle={styles.headerTitle}
+        subtitleStyle={styles.headerSubtitle}
+      />
 
       <ScrollView contentContainerStyle={styles.content}>
         {services.map((service) => (

@@ -1,9 +1,11 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { DrawerActions, useFocusEffect } from '@react-navigation/native';
 import moment from 'moment';
 import 'moment/locale/pt-br';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import AppScreenHeader from '../components/AppScreenHeader.jsx';
+import HeaderActionButton from '../components/HeaderActionButton.jsx';
 import { AppCard } from '../components/ui.jsx';
 import { RequireClinPro } from '../components/RequireClinPro.jsx';
 import { colors } from '../theme/tokens';
@@ -140,13 +142,14 @@ export default function CommunityFeedScreen({ navigation }) {
   return (
     <RequireClinPro>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerTitleRow}>
-            <View style={styles.menuSlot} />
-            <Text style={styles.headerTitle}>Comunidade</Text>
-          </View>
-          <Text style={styles.headerSubtitle}>Dicas e trocas com outros profissionais</Text>
-        </View>
+        <AppScreenHeader
+          title="Comunidade"
+          subtitle="Dicas e trocas com outros profissionais"
+          showBack={false}
+          leftContent={<HeaderActionButton onPress={() => navigation.dispatch(DrawerActions.openDrawer())} icon="menu" />}
+          titleStyle={styles.headerTitle}
+          subtitleStyle={styles.headerSubtitle}
+        />
 
         <View style={styles.filterBar}>
           <ScrollView

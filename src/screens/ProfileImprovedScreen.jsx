@@ -1,6 +1,9 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { DrawerActions } from '@react-navigation/native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import AppScreenHeader from '../components/AppScreenHeader.jsx';
+import HeaderActionButton from '../components/HeaderActionButton.jsx';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { profile } from '../data/mockData';
 import { colors } from '../theme/tokens';
@@ -15,16 +18,17 @@ const metrics = [
 export default function ProfileImprovedScreen({ navigation }) {
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.menuSlot} />
-          <Text style={styles.headerTitle}>Meu Perfil</Text>
-          <Pressable style={styles.editHeaderButton} onPress={() => navigation.navigate('PersonalData')}>
-            <Feather name="edit-3" size={18} color="#FFFFFF" />
-          </Pressable>
-        </View>
-        <Text style={styles.headerSubtitle}>Profissional de Limpeza</Text>
-      </View>
+      <AppScreenHeader
+        title="Meu Perfil"
+        subtitle="Profissional de Limpeza"
+        showBack={false}
+        leftContent={<HeaderActionButton onPress={() => navigation.dispatch(DrawerActions.openDrawer())} icon="menu" />}
+        titleStyle={styles.headerTitle}
+        subtitleStyle={styles.headerSubtitle}
+        rightContent={
+          <HeaderActionButton onPress={() => navigation.navigate('PersonalData')} icon="edit-3" />
+        }
+      />
 
       <ScrollView contentContainerStyle={styles.content}>
         <AppCard style={styles.summaryCard}>
@@ -156,14 +160,6 @@ const styles = StyleSheet.create({
   menuSlot: { width: 46 },
   headerTitle: { flex: 1, color: '#FFFFFF', fontSize: 24, fontWeight: '700' },
   headerSubtitle: { color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 3, marginLeft: 46 },
-  editHeaderButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   content: { padding: 16, gap: 12, paddingBottom: 28 },
   center: { alignItems: 'center' },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
