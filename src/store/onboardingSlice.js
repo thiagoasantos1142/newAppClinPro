@@ -53,14 +53,15 @@ export const refreshOnboarding = createAsyncThunk(
     }
   },
   {
-    condition: (_, { getState }) => {
+    condition: (arg, { getState }) => {
       const { onboarding, auth } = getState();
 
       if (!auth?.token) {
         return false;
       }
 
-      if (onboarding?.loading) {
+      // Allow forced refresh even if a refresh is already in progress (e.g. after completing a step).
+      if (onboarding?.loading && !(arg && arg.force)) {
         return false;
       }
 
@@ -74,7 +75,8 @@ export const completeOnboardingStep = createAsyncThunk(
   async ({ step, answers }, { dispatch, rejectWithValue }) => {
     try {
       const result = await completeOnboardingStepApi(step, answers);
-      await dispatch(refreshOnboarding()).unwrap();
+      // Force a refresh so we reliably stay in sync with backend status.
+      await dispatch(refreshOnboarding({ force: true })).unwrap();
       return result;
     } catch (err) {
       return rejectWithValue(getErrorMessage(err));
@@ -115,9 +117,11 @@ const onboardingSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(completeOnboardingStep.fulfilled, (state) => {
+      .addCase(completeOnboardingStep.fulfilled, (state, action) => {
         state.loading = false;
         state.error = null;
+        // Keep state in sync immediately after a step is completed.
+        state.status = normalizeOnboardingStatus(action.payload);
       })
       .addCase(completeOnboardingStep.rejected, (state, action) => {
         state.loading = false;

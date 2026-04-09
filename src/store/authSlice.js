@@ -4,6 +4,7 @@ const initialState = {
   user: null,
   token: null,
   refreshToken: null,
+  clinProAccess: null,
   loading: true,
 };
 
@@ -18,11 +19,13 @@ const authSlice = createSlice({
       state.token = action.payload?.token ?? null;
       state.refreshToken = action.payload?.refreshToken ?? null;
       state.user = action.payload?.user ?? null;
+      state.clinProAccess = action.payload?.clinProAccess ?? null;
     },
     clearAuthSession(state) {
       state.user = null;
       state.token = null;
       state.refreshToken = null;
+      state.clinProAccess = null;
       state.loading = false;
     },
   },

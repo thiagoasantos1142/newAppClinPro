@@ -68,6 +68,7 @@ import VideoAvTestScreen from '../screens/dev/VideoAvTestScreen.jsx';
 import PhoneLoginScreen from '../screens/auth/PhoneLoginScreen.jsx';
 import OtpVerificationScreen from '../screens/auth/OtpVerificationScreen.jsx';
 import AppDrawerContent from '../components/navigation/AppDrawerContent.jsx';
+import SubscriptionRequiredScreen from '../screens/SubscriptionRequiredScreen.jsx';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -198,7 +199,7 @@ function OnboardingFlow({ initialRouteName }) {
 
 function OnboardingGate() {
   const dispatch = useDispatch();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, clinProAccess } = useAuth();
   const { status, loading, error, refresh } = useOnboarding();
 
   useEffect(() => {
@@ -206,10 +207,15 @@ function OnboardingGate() {
       return;
     }
 
-    if (!status && !loading) {
+    if (!status && !loading && !error) {
       void dispatch(refreshOnboarding());
     }
-  }, [dispatch, isAuthenticated, loading, status]);
+  }, [dispatch, error, isAuthenticated, loading, status]);
+
+  useEffect(() => {
+    if (!status) return;
+    console.log('[OnboardingGate] status:', status);
+  }, [status]);
 
   const initialRouteName =
     status?.steps?.welcome && status?.current_step === 'welcome'
@@ -222,6 +228,26 @@ function OnboardingGate() {
         <Text>Carregando onboarding...</Text>
       </View>
     );
+  }
+
+  if (status?.subscription_required) {
+    return (
+      <SubscriptionRequiredScreen
+        access={status.access}
+        message={status.message}
+      />
+    );
+  }
+
+  if (clinProAccess && clinProAccess.is_active === false && clinProAccess.upgrade_available) {
+    return <SubscriptionRequiredScreen access={clinProAccess} message={clinProAccess.message} />;
+  }
+
+  if (
+    typeof error === 'string' &&
+    error.toLowerCase().includes('expirou')
+  ) {
+    return <SubscriptionRequiredScreen message={error} />;
   }
 
   if (error) {
@@ -252,7 +278,9 @@ function OnboardingGate() {
     );
   }
 
-  return <OnboardingFlow initialRouteName={initialRouteName} />;
+  // Force remount of the onboarding navigator whenever the current step changes.
+  // This ensures `initialRouteName` is respected even when the status is updated after mount.
+  return <OnboardingFlow key={status?.current_step || 'welcome'} initialRouteName={initialRouteName} />;
 }
 
 function AuthFlow() {

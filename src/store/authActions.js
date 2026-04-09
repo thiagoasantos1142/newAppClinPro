@@ -12,6 +12,25 @@ import { setAuthToken } from '../services/api';
 const AUTH_TOKEN_KEY = 'authToken';
 const AUTH_REFRESH_TOKEN_KEY = 'authRefreshToken';
 
+const getOtpVerificationErrorMessage = (err) => {
+  const status = err?.response?.status;
+  const backendMessage = err?.response?.data?.error || err?.response?.data?.message || '';
+
+  if (status === 403 && backendMessage === 'User is not a ClinPro professional') {
+    return 'Este numero nao esta vinculado a uma conta profissional ClinPro. Verifique seu cadastro ou fale com o suporte.';
+  }
+
+  if (status === 401 || status === 422) {
+    return 'Codigo invalido ou expirado. Solicite um novo codigo e tente novamente.';
+  }
+
+  if (typeof backendMessage === 'string' && backendMessage.trim()) {
+    return backendMessage;
+  }
+
+  return 'Nao foi possivel validar o codigo agora. Tente novamente em instantes.';
+};
+
 export const initializeAuth = () => async (dispatch) => {
   dispatch(setAuthLoading(true));
   try {
@@ -35,20 +54,25 @@ export const requestOtp = (phone) => async () => {
 };
 
 export const verifyOtp = (phone, code) => async (dispatch) => {
-  const response = await verifyOtpApi({ phone, code });
-  await SecureStore.setItemAsync(AUTH_TOKEN_KEY, response.token);
-  if (response.refresh_token) {
-    await SecureStore.setItemAsync(AUTH_REFRESH_TOKEN_KEY, response.refresh_token);
+  try {
+    const response = await verifyOtpApi({ phone, code });
+    await SecureStore.setItemAsync(AUTH_TOKEN_KEY, response.token);
+    if (response.refresh_token) {
+      await SecureStore.setItemAsync(AUTH_REFRESH_TOKEN_KEY, response.refresh_token);
+    }
+    setAuthToken(response.token);
+    dispatch(
+      setAuthSession({
+        token: response.token,
+        refreshToken: response.refresh_token || null,
+        user: response.user,
+        clinProAccess: response.clin_pro_access || null,
+      })
+    );
+    return response;
+  } catch (err) {
+    throw new Error(getOtpVerificationErrorMessage(err));
   }
-  setAuthToken(response.token);
-  dispatch(
-    setAuthSession({
-      token: response.token,
-      refreshToken: response.refresh_token || null,
-      user: response.user,
-    })
-  );
-  return response;
 };
 
 export const refreshSession = () => async (dispatch, getState) => {
@@ -70,6 +94,7 @@ export const refreshSession = () => async (dispatch, getState) => {
       token: response.token,
       refreshToken: response.refresh_token || refreshToken,
       user: response.user ?? getState()?.auth?.user ?? null,
+      clinProAccess: response.clin_pro_access ?? getState()?.auth?.clinProAccess ?? null,
     })
   );
   return response;

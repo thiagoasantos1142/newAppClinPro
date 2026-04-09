@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,10 +12,42 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '../components/ui.jsx';
-import { colors, radius, spacing, typography } from '../theme/tokens';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { useQuestionsFlow } from '../hooks/useQuestionsFlow';
 import { getRouteForStep } from '../navigation/onboardingStepMap';
+import { getOnboardingCoverage } from '../services/modules/onboarding.service';
+import { colors, radius, spacing, typography } from '../theme/tokens';
+import { pickAndUploadImage } from '../utils/imagePickerUpload';
+
+const MIN_BIO_LENGTH = 20;
+
+const sanitizeCep = (value) => String(value || '').replace(/\D/g, '').slice(0, 8);
+
+const formatCep = (value) => {
+  const digits = sanitizeCep(value);
+  if (digits.length <= 5) {
+    return digits;
+  }
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+};
+
+const getInitialServiceAreaLabel = (status) => {
+  const profile = status?.profile;
+  if (!profile || typeof profile !== 'object') {
+    return '';
+  }
+
+  const serviceArea = profile.service_area;
+  if (serviceArea && typeof serviceArea === 'object') {
+    return serviceArea.display_label || serviceArea.label || serviceArea.region || '';
+  }
+
+  if (typeof serviceArea === 'string' && serviceArea.trim()) {
+    return serviceArea;
+  }
+
+  return profile.region || '';
+};
 
 export default function OnboardingProfileScreen({ navigation }) {
   const { status, completeStep, loading } = useOnboarding();
@@ -23,69 +55,155 @@ export default function OnboardingProfileScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  const [hasPhoto, setHasPhoto] = useState(false);
-  const [selectedRegion, setSelectedRegion] = useState('');
-  const [selectedServices, setSelectedServices] = useState([]);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [bio, setBio] = useState('');
-  const [showRegionDropdown, setShowRegionDropdown] = useState(false);
-
-  const regions = [
-    'São Paulo - Zona Sul',
-    'São Paulo - Zona Norte',
-    'São Paulo - Zona Leste',
-    'São Paulo - Zona Oeste',
-    'São Paulo - Centro',
-    'Rio de Janeiro',
-    'Belo Horizonte',
-    'Brasília',
-    'Outra região',
-  ];
+  const [cep, setCep] = useState('');
+  const [coverageLoading, setCoverageLoading] = useState(false);
+  const [coverageResult, setCoverageResult] = useState(null);
+  const [coverageError, setCoverageError] = useState('');
+  const [selectedServices, setSelectedServices] = useState([]);
 
   const services = [
-    { id: 'limpeza-completa', label: 'Limpeza\nCompleta', emoji: '🏠' },
-    { id: 'limpeza-rapida', label: 'Limpeza\nRápida', emoji: '⚡' },
-    { id: 'limpeza-pesada', label: 'Limpeza\nPesada', emoji: '💪' },
-    { id: 'passar-roupa', label: 'Passar\nRoupa', emoji: '👔' },
-    { id: 'organizar-armarios', label: 'Organizar\nArmários', emoji: '🗄️' },
-    { id: 'cozinha', label: 'Cozinha\nEspecial', emoji: '🍳' },
+    { id: 'limpeza-completa', label: 'Limpeza\nCompleta', emoji: 'LC' },
+    { id: 'limpeza-rapida', label: 'Limpeza\nRapida', emoji: 'LR' },
+    { id: 'limpeza-pesada', label: 'Limpeza\nPesada', emoji: 'LP' },
+    { id: 'passar-roupa', label: 'Passar\nRoupa', emoji: 'PR' },
+    { id: 'organizar-armarios', label: 'Organizar\nArmarios', emoji: 'OA' },
+    { id: 'cozinha', label: 'Cozinha\nEspecial', emoji: 'CE' },
   ];
-
-  const totalSteps = 7;
-  const completedSteps = status?.steps ? Object.values(status.steps).filter(Boolean).length : 0;
-  const currentStepNumber = Math.min(completedSteps + 1, totalSteps);
 
   useEffect(() => {
     if (!status) {
       setIsInitialLoading(true);
       return;
     }
+
     setIsInitialLoading(false);
+
     if (status.completed) {
       navigation.navigate('MainTabs');
       return;
     }
+
     if (status.current_step !== 'profile') {
       navigation.navigate(getRouteForStep(status.current_step));
+      return;
     }
-  }, [status, navigation]);
+
+    const profile = status.profile;
+    if (profile && typeof profile === 'object') {
+      if (!profilePhotoUrl && profile.profile_photo) {
+        setProfilePhotoUrl(profile.profile_photo);
+      }
+      if (!bio && profile.bio) {
+        setBio(profile.bio);
+      }
+      if (!cep && profile.cep) {
+        setCep(formatCep(profile.cep));
+      }
+      if (!coverageResult) {
+        const initialLabel = getInitialServiceAreaLabel(status);
+        if (initialLabel) {
+          setCoverageResult({
+            covered: true,
+            display_label: initialLabel,
+          });
+        }
+      }
+    }
+  }, [bio, cep, coverageResult, navigation, profilePhotoUrl, status]);
+
+  useEffect(() => {
+    const digits = sanitizeCep(cep);
+    if (!digits) {
+      setCoverageLoading(false);
+      setCoverageResult(null);
+      setCoverageError('');
+      return undefined;
+    }
+
+    if (digits.length < 8) {
+      setCoverageLoading(false);
+      setCoverageResult(null);
+      setCoverageError('Informe um CEP valido para consultar a cobertura.');
+      return undefined;
+    }
+
+    let isActive = true;
+    setCoverageLoading(true);
+    setCoverageError('');
+
+    const timer = setTimeout(async () => {
+      try {
+        const response = await getOnboardingCoverage(formatCep(digits));
+        if (!isActive) {
+          return;
+        }
+
+        if (response?.covered) {
+          setCoverageResult(response);
+          setCoverageError('');
+          return;
+        }
+
+        setCoverageResult(response || null);
+        setCoverageError(response?.message || 'Ainda nao atendemos esse CEP no Clin Pro.');
+      } catch (err) {
+        if (!isActive) {
+          return;
+        }
+        setCoverageResult(null);
+        setCoverageError(err?.response?.data?.message || 'Nao foi possivel consultar a cobertura agora.');
+      } finally {
+        if (isActive) {
+          setCoverageLoading(false);
+        }
+      }
+    }, 450);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timer);
+    };
+  }, [cep]);
 
   const toggleService = useCallback((serviceId) => {
     setSelectedServices((prev) =>
-      prev.includes(serviceId) ? prev.filter((s) => s !== serviceId) : [...prev, serviceId]
+      prev.includes(serviceId) ? prev.filter((item) => item !== serviceId) : [...prev, serviceId]
     );
   }, []);
 
-  const calculateProgress = useCallback(() => {
+  const progress = useMemo(() => {
     let completed = 0;
-    if (hasPhoto) completed += 25;
-    if (selectedRegion) completed += 25;
+    if (profilePhotoUrl.trim()) completed += 25;
+    if (coverageResult?.covered) completed += 25;
     if (selectedServices.length > 0) completed += 25;
-    if (bio.length >= 20) completed += 25;
+    if (bio.trim().length >= MIN_BIO_LENGTH) completed += 25;
     return completed;
-  }, [hasPhoto, selectedRegion, selectedServices, bio]);
+  }, [bio, coverageResult?.covered, profilePhotoUrl, selectedServices.length]);
 
-  const progress = calculateProgress();
-  const canContinue = progress >= 75;
+  const canContinue = progress >= 75 && coverageResult?.covered;
+
+  const handleProfilePhotoUpload = useCallback(async (source) => {
+    try {
+      setUploadingPhoto(true);
+      const upload = await pickAndUploadImage({
+        source,
+        folder: 'clinpro/profile-photos',
+        allowsEditing: true,
+        aspect: [1, 1],
+      });
+
+      if (upload?.url) {
+        setProfilePhotoUrl(upload.url);
+      }
+    } catch (err) {
+      Alert.alert('Erro', err?.message || 'Nao foi possivel enviar a foto de perfil.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }, []);
 
   const experienceYearsFromQuestions = useMemo(() => {
     switch (questionsData?.experience) {
@@ -103,17 +221,17 @@ export default function OnboardingProfileScreen({ navigation }) {
   }, [questionsData?.experience]);
 
   const handleContinue = useCallback(async () => {
-    if (!canContinue) return;
-    try {
-      const selectedSpecialties = services
-        .filter((service) => selectedServices.includes(service.id))
-        .map((service) => service.label.replace('\n', ' '));
+    if (!canContinue) {
+      return;
+    }
 
+    try {
       await completeStep('profile', {
-        bio,
-        service_region: selectedRegion,
-        specialties: selectedSpecialties,
+        bio: bio.trim(),
+        cep: formatCep(cep),
         experience_years: experienceYearsFromQuestions,
+        profile_photo: profilePhotoUrl.trim(),
+        specialties: selectedServices,
       });
       resetQuestionsData();
       navigation.navigate('OnboardingFirstAction');
@@ -123,13 +241,13 @@ export default function OnboardingProfileScreen({ navigation }) {
   }, [
     bio,
     canContinue,
+    cep,
     completeStep,
     experienceYearsFromQuestions,
     navigation,
+    profilePhotoUrl,
     resetQuestionsData,
-    selectedRegion,
     selectedServices,
-    services,
   ]);
 
   if (isInitialLoading) {
@@ -149,23 +267,19 @@ export default function OnboardingProfileScreen({ navigation }) {
           </Pressable>
           <View style={styles.headerTextWrap}>
             <Text style={styles.headerTitle}>Complete seu perfil</Text>
-            <Text style={styles.headerSubtitle}>Isso ajuda clientes a te conhecerem</Text>
+            <Text style={styles.headerSubtitle}>Seu CEP define a area atendida no Clin Pro</Text>
           </View>
         </View>
 
         <View style={styles.progressCard}>
-          <Text style={styles.progressLabel}>Seu perfil está {progress}% completo</Text>
+          <Text style={styles.progressLabel}>Seu perfil esta {progress}% completo</Text>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: `${progress}%` }]} />
           </View>
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Photo Upload */}
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Foto de perfil</Text>
           <View style={styles.photoSection}>
@@ -173,87 +287,95 @@ export default function OnboardingProfileScreen({ navigation }) {
               style={[
                 styles.photoPicker,
                 {
-                  borderColor: hasPhoto ? colors.primary : colors.border,
-                  backgroundColor: hasPhoto ? 'rgba(31, 128, 234, 0.05)' : colors.accent,
+                  borderColor: profilePhotoUrl.trim() ? colors.primary : colors.border,
+                  backgroundColor: profilePhotoUrl.trim() ? 'rgba(31, 128, 234, 0.05)' : colors.accent,
                 },
               ]}
             >
-              {hasPhoto ? (
-                <Text style={styles.photoEmoji}>👩</Text>
+              {profilePhotoUrl.trim() ? (
+                <Text style={styles.photoEmoji}>OK</Text>
               ) : (
                 <Feather name="camera" size={32} color={colors.mutedForeground} />
               )}
             </View>
-            <Pressable
-              onPress={() => setHasPhoto(!hasPhoto)}
-              style={[styles.photoButton, { flexGrow: 1 }]}
-            >
-              <Feather name="camera" size={20} color={colors.primary} />
-              <View style={styles.photoButtonText}>
-                <Text style={styles.photoButtonTitle}>
-                  {hasPhoto ? 'Mudar foto' : 'Adicionar foto'}
-                </Text>
-                <Text style={styles.photoButtonSubtitle}>Câmera ou galeria</Text>
+            <View style={[styles.photoButton, { flexGrow: 1 }]}>
+              <View style={styles.photoButtonHeader}>
+                <Feather name="camera" size={20} color={colors.primary} />
+                <View style={styles.photoButtonText}>
+                  <Text style={styles.photoButtonTitle}>
+                    {profilePhotoUrl.trim() ? 'Foto vinculada' : 'Adicionar foto'}
+                  </Text>
+                  <Text style={styles.photoButtonSubtitle}>Camera ou galeria com upload automatico</Text>
+                </View>
               </View>
-            </Pressable>
+              <View style={styles.uploadActions}>
+                <AppButton
+                  title={uploadingPhoto ? 'Enviando...' : 'Camera'}
+                  onPress={() => handleProfilePhotoUpload('camera')}
+                  variant="secondary"
+                  disabled={uploadingPhoto}
+                  style={styles.inlineButton}
+                />
+                <AppButton
+                  title={uploadingPhoto ? 'Enviando...' : 'Galeria'}
+                  onPress={() => handleProfilePhotoUpload('library')}
+                  variant="ghost"
+                  disabled={uploadingPhoto}
+                  style={styles.inlineButton}
+                />
+              </View>
+            </View>
+          </View>
+          <TextInput
+            value={profilePhotoUrl}
+            onChangeText={setProfilePhotoUrl}
+            placeholder="URL da foto de perfil"
+            placeholderTextColor={colors.mutedForeground}
+            autoCapitalize="none"
+            style={[styles.bioInput, styles.photoUrlInput]}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>CEP de atendimento</Text>
+          <TextInput
+            value={cep}
+            onChangeText={(value) => setCep(formatCep(value))}
+            placeholder="00000-000"
+            placeholderTextColor={colors.mutedForeground}
+            keyboardType="number-pad"
+            maxLength={9}
+            style={styles.selectButton}
+          />
+
+          <View style={styles.coverageCard}>
+            <View style={styles.coverageHeader}>
+              <Feather
+                name={coverageResult?.covered ? 'check-circle' : coverageError ? 'alert-circle' : 'map-pin'}
+                size={18}
+                color={coverageResult?.covered ? '#16a34a' : coverageError ? '#dc2626' : colors.primary}
+              />
+              <Text style={styles.coverageTitle}>Cobertura via backend</Text>
+              {coverageLoading ? <ActivityIndicator size="small" color={colors.primary} /> : null}
+            </View>
+
+            {coverageResult?.covered ? (
+              <>
+                <Text style={styles.coverageLabel}>{coverageResult.display_label}</Text>
+                <Text style={styles.coverageHelper}>
+                  Esta sera a sua area principal de atendimento no Clin Pro.
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.coverageHelper}>
+                {coverageError || 'Digite um CEP valido para consultar a cobertura da sua regiao.'}
+              </Text>
+            )}
           </View>
         </View>
 
-        {/* Region Selection */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Região de atuação</Text>
-          <Pressable
-            onPress={() => setShowRegionDropdown(!showRegionDropdown)}
-            style={styles.selectButton}
-          >
-            <View style={styles.selectContent}>
-              <Text
-                style={[
-                  styles.selectText,
-                  !selectedRegion && { color: colors.mutedForeground },
-                ]}
-              >
-                {selectedRegion || 'Selecione sua região'}
-              </Text>
-            </View>
-            <Feather name="map-pin" size={20} color={colors.mutedForeground} />
-          </Pressable>
-
-          {showRegionDropdown && (
-            <View style={styles.dropdown}>
-              <FlatList
-                data={regions}
-                keyExtractor={(item) => item}
-                scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <Pressable
-                    onPress={() => {
-                      setSelectedRegion(item);
-                      setShowRegionDropdown(false);
-                    }}
-                    style={[
-                      styles.dropdownItem,
-                      selectedRegion === item && styles.dropdownItemSelected,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.dropdownItemText,
-                        selectedRegion === item && styles.dropdownItemTextSelected,
-                      ]}
-                    >
-                      {item}
-                    </Text>
-                  </Pressable>
-                )}
-              />
-            </View>
-          )}
-        </View>
-
-        {/* Services Offered */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Serviços que você oferece</Text>
+          <Text style={styles.sectionLabel}>Servicos que voce oferece</Text>
           <View style={styles.servicesGrid}>
             {services.map((service) => {
               const isSelected = selectedServices.includes(service.id);
@@ -278,35 +400,34 @@ export default function OnboardingProfileScreen({ navigation }) {
                   >
                     {service.label}
                   </Text>
-                  {isSelected && (
+                  {isSelected ? (
                     <View style={styles.checkmark}>
                       <Feather name="check" size={12} color={colors.primaryForeground} />
                     </View>
-                  )}
+                  ) : null}
                 </Pressable>
               );
             })}
           </View>
         </View>
 
-        {/* Bio */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Pequena descrição sobre você</Text>
+          <Text style={styles.sectionLabel}>Pequena descricao sobre voce</Text>
           <TextInput
             value={bio}
             onChangeText={setBio}
-            placeholder="Ex: Sou profissional há 5 anos, amo o que faço..."
+            placeholder="Ex: Sou profissional ha 5 anos, amo o que faco..."
             placeholderTextColor={colors.mutedForeground}
             maxLength={200}
             multiline
             style={styles.bioInput}
           />
           <View style={styles.bioFooter}>
-            <Text style={styles.bioHelper}>Mínimo 20 caracteres</Text>
+            <Text style={styles.bioHelper}>Minimo 20 caracteres</Text>
             <Text
               style={[
                 styles.bioCounter,
-                { color: bio.length < 20 ? colors.mutedForeground : colors.primary },
+                { color: bio.trim().length < MIN_BIO_LENGTH ? colors.mutedForeground : colors.primary },
               ]}
             >
               {bio.length}/200
@@ -314,18 +435,19 @@ export default function OnboardingProfileScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Completion Card */}
-        {progress >= 75 && (
+        {progress >= 75 ? (
           <View style={styles.completionCard}>
             <View style={styles.completionDot} />
-            <View>
+            <View style={styles.completionContent}>
               <Text style={styles.completionTitle}>Perfil quase completo!</Text>
               <Text style={styles.completionText}>
-                Você está pronta para continuar. Pode adicionar mais informações depois.
+                {coverageResult?.covered
+                  ? 'Sua area de atendimento foi validada. Voce ja pode seguir para a proxima etapa.'
+                  : 'Finalize com um CEP atendido para continuar no onboarding.'}
               </Text>
             </View>
           </View>
-        )}
+        ) : null}
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.md }]}>
@@ -341,9 +463,11 @@ export default function OnboardingProfileScreen({ navigation }) {
             )
           }
         />
-        {!canContinue && (
-          <Text style={styles.footerHelper}>Complete pelo menos 75% do perfil para continuar</Text>
-        )}
+        {!canContinue ? (
+          <Text style={styles.footerHelper}>
+            Adicione foto, bio e um CEP atendido para continuar
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -436,12 +560,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   photoEmoji: {
-    fontSize: 48,
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.primary,
   },
   photoButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
     backgroundColor: colors.card,
     borderWidth: 2,
     borderColor: 'rgba(26, 62, 112, 0.1)',
@@ -451,6 +574,11 @@ const styles = StyleSheet.create({
   },
   photoButtonText: {
     flex: 1,
+  },
+  photoButtonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   photoButtonTitle: {
     color: colors.cardForeground,
@@ -462,48 +590,59 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xs,
     marginTop: spacing.xs,
   },
-  selectButton: {
+  uploadActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  inlineButton: {
+    flex: 1,
+    minHeight: 42,
+  },
+  photoUrlInput: {
+    minHeight: 52,
+    maxHeight: 52,
+    marginTop: spacing.md,
+  },
+  selectButton: {
     backgroundColor: colors.card,
     borderWidth: 2,
     borderColor: 'rgba(26, 62, 112, 0.1)',
     borderRadius: radius.xl,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-  },
-  selectContent: {
-    flex: 1,
-  },
-  selectText: {
     color: colors.cardForeground,
     fontSize: typography.fontSize.sm,
   },
-  dropdown: {
+  coverageCard: {
+    marginTop: spacing.md,
     backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    marginTop: spacing.sm,
-    overflow: 'hidden',
+    borderColor: 'rgba(26, 62, 112, 0.1)',
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    gap: spacing.sm,
   },
-  dropdownItem: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(26, 62, 112, 0.08)',
+  coverageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
-  dropdownItemSelected: {
-    backgroundColor: 'rgba(31, 128, 234, 0.08)',
-  },
-  dropdownItemText: {
+  coverageTitle: {
+    flex: 1,
     color: colors.cardForeground,
     fontSize: typography.fontSize.sm,
-  },
-  dropdownItemTextSelected: {
-    color: colors.primary,
     fontWeight: typography.fontWeight.bold,
+  },
+  coverageLabel: {
+    color: colors.primary,
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.bold,
+  },
+  coverageHelper: {
+    color: colors.mutedForeground,
+    fontSize: typography.fontSize.xs,
+    lineHeight: 18,
   },
   servicesGrid: {
     flexDirection: 'row',
@@ -521,8 +660,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   serviceEmoji: {
-    fontSize: 32,
+    fontSize: 18,
     marginBottom: spacing.sm,
+    fontWeight: '700',
+    color: colors.primary,
   },
   serviceLabel: {
     fontSize: typography.fontSize.xs,
@@ -585,6 +726,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     backgroundColor: '#22c55e',
     marginTop: spacing.xs,
+  },
+  completionContent: {
+    flex: 1,
   },
   completionTitle: {
     color: '#166534',

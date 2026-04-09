@@ -12,7 +12,7 @@ export const useOnboarding = () => {
   return useMemo(
     () => ({
       ...state,
-      refresh: () => dispatch(refreshOnboarding()).unwrap(),
+      refresh: (arg) => dispatch(refreshOnboarding(arg)).unwrap(),
       completeStep: (step, answers) =>
         dispatch(completeOnboardingStepThunk({ step, answers })).unwrap(),
     }),

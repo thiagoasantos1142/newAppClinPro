@@ -26,13 +26,17 @@ export default function OnboardingWelcomeScreen({ navigation }) {
       navigation.navigate('MainTabs');
       return;
     }
-    if (status?.steps?.welcome && status.current_step === 'welcome') {
+
+    // If welcome has already been completed, the user should not stay on this screen.
+    if (status?.steps?.welcome) {
+      // Prefer navigating to the current step (e.g. questions) so we follow backend status.
       navigation.reset({
         index: 0,
-        routes: [{ name: 'QuestionsClients' }],
+        routes: [{ name: getRouteForStep(status.current_step) }],
       });
       return;
     }
+
     if (!canAccessStep(status, 'welcome')) {
       navigation.navigate(getRouteForStep(status.current_step));
     }

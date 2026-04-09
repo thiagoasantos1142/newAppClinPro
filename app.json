@@ -45,7 +45,8 @@
       "expo-secure-store",
       "expo-video",
       "expo-audio",
-      "expo-asset"
+      "expo-asset",
+      "expo-image-picker"
     ],
     "extra": {
       "eas": {
