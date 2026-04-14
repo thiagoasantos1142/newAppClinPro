@@ -1,7 +1,9 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,7 +23,9 @@ export default function OnboardingProfileScreen({ navigation }) {
   const { status, completeStep, saving } = useOnboarding();
   const { questionsData, resetQuestionsData } = useQuestionsFlow();
   const insets = useSafeAreaInsets();
+  const scrollRef = useRef(null);
 
+  const [name, setName] = useState('');
   const [hasPhoto, setHasPhoto] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState('');
   const [selectedServices, setSelectedServices] = useState([]);
@@ -55,17 +59,26 @@ export default function OnboardingProfileScreen({ navigation }) {
     );
   }, []);
 
+  const handleBioFocus = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    });
+  }, []);
+
+  const bioLength = bio.trim().length;
+
   const calculateProgress = useCallback(() => {
     let completed = 0;
-    if (hasPhoto) completed += 25;
-    if (selectedRegion) completed += 25;
-    if (selectedServices.length > 0) completed += 25;
-    if (bio.length >= 20) completed += 25;
+    if (name.trim().length >= 3) completed += 20;
+    if (hasPhoto) completed += 20;
+    if (selectedRegion) completed += 20;
+    if (selectedServices.length > 0) completed += 20;
+    if (bioLength >= 20) completed += 20;
     return completed;
-  }, [hasPhoto, selectedRegion, selectedServices, bio]);
+  }, [name, hasPhoto, selectedRegion, selectedServices, bioLength]);
 
   const progress = calculateProgress();
-  const canContinue = progress >= 75;
+  const canContinue = progress === 100;
 
   const experienceYearsFromQuestions = useMemo(() => {
     switch (questionsData?.experience) {
@@ -90,6 +103,7 @@ export default function OnboardingProfileScreen({ navigation }) {
         .map((service) => service.label.replace('\n', ' '));
 
       await completeStep('profile', {
+        name: name.trim(),
         bio,
         service_region: selectedRegion,
         specialties: selectedSpecialties,
@@ -105,6 +119,7 @@ export default function OnboardingProfileScreen({ navigation }) {
     canContinue,
     completeStep,
     experienceYearsFromQuestions,
+    name,
     navigation,
     resetQuestionsData,
     selectedRegion,
@@ -139,172 +154,187 @@ export default function OnboardingProfileScreen({ navigation }) {
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.scrollWrap}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Photo Upload */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Foto de perfil</Text>
-          <View style={styles.photoCard}>
-            <View style={styles.photoSection}>
-              <Pressable
-                onPress={() => setHasPhoto(!hasPhoto)}
-                style={styles.photoPickerWrap}
-              >
-                <View
-                  style={[
-                    styles.photoPicker,
-                    {
-                      borderColor: hasPhoto ? colors.primary : 'rgba(26, 62, 112, 0.08)',
-                      backgroundColor: hasPhoto ? 'rgba(31, 128, 234, 0.08)' : '#F5F8FC',
-                    },
-                  ]}
-                >
-                  {hasPhoto ? (
-                    <Text style={styles.photoEmoji}>👩</Text>
-                  ) : (
-                    <Feather name="user" size={42} color={colors.mutedForeground} />
-                  )}
-                </View>
-                <View style={styles.photoBadge}>
-                  <Feather name="camera" size={16} color={colors.primaryForeground} />
-                </View>
-              </Pressable>
-              <Text style={styles.photoTitle}>{hasPhoto ? 'Toque para trocar sua foto' : 'Adicione sua melhor foto'}</Text>
-              <Text style={styles.photoSubtitle}>Um perfil com foto transmite mais confiança para clientes.</Text>
-            </View>
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Seu nome</Text>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder="Digite seu nome completo"
+              placeholderTextColor={colors.mutedForeground}
+              autoCapitalize="words"
+              style={styles.textInput}
+            />
           </View>
-        </View>
 
-        {/* Region Selection */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Região de atuação</Text>
-          <Pressable
-            onPress={() => setShowRegionDropdown(!showRegionDropdown)}
-            style={styles.selectButton}
-          >
-            <View style={styles.selectContent}>
-              <Text
-                style={[
-                  styles.selectText,
-                  !selectedRegion && { color: colors.mutedForeground },
-                ]}
-              >
-                {selectedRegion || 'Selecione sua região'}
-              </Text>
-            </View>
-            <Feather name="map-pin" size={20} color={colors.mutedForeground} />
-          </Pressable>
-
-          {showRegionDropdown && (
-            <View style={styles.dropdown}>
-              <FlatList
-                data={regions}
-                keyExtractor={(item) => item}
-                scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <Pressable
-                    onPress={() => {
-                      setSelectedRegion(item);
-                      setShowRegionDropdown(false);
-                    }}
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Foto de perfil</Text>
+            <View style={styles.photoCard}>
+              <View style={styles.photoSection}>
+                <Pressable
+                  onPress={() => setHasPhoto(!hasPhoto)}
+                  style={styles.photoPickerWrap}
+                >
+                  <View
                     style={[
-                      styles.dropdownItem,
-                      selectedRegion === item && styles.dropdownItemSelected,
+                      styles.photoPicker,
+                      {
+                        borderColor: hasPhoto ? colors.primary : 'rgba(26, 62, 112, 0.08)',
+                        backgroundColor: hasPhoto ? 'rgba(31, 128, 234, 0.08)' : '#F5F8FC',
+                      },
                     ]}
                   >
-                    <Text
+                    {hasPhoto ? (
+                      <Text style={styles.photoEmoji}>👩</Text>
+                    ) : (
+                      <Feather name="user" size={42} color={colors.mutedForeground} />
+                    )}
+                  </View>
+                  <View style={styles.photoBadge}>
+                    <Feather name="camera" size={16} color={colors.primaryForeground} />
+                  </View>
+                </Pressable>
+                <Text style={styles.photoTitle}>{hasPhoto ? 'Toque para trocar sua foto' : 'Adicione sua melhor foto'}</Text>
+                <Text style={styles.photoSubtitle}>Um perfil com foto transmite mais confiança para clientes.</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Região de atuação</Text>
+            <Pressable
+              onPress={() => setShowRegionDropdown(!showRegionDropdown)}
+              style={styles.selectButton}
+            >
+              <View style={styles.selectContent}>
+                <Text
+                  style={[
+                    styles.selectText,
+                    !selectedRegion && { color: colors.mutedForeground },
+                  ]}
+                >
+                  {selectedRegion || 'Selecione sua região'}
+                </Text>
+              </View>
+              <Feather name="map-pin" size={20} color={colors.mutedForeground} />
+            </Pressable>
+
+            {showRegionDropdown && (
+              <View style={styles.dropdown}>
+                <FlatList
+                  data={regions}
+                  keyExtractor={(item) => item}
+                  scrollEnabled={false}
+                  renderItem={({ item }) => (
+                    <Pressable
+                      onPress={() => {
+                        setSelectedRegion(item);
+                        setShowRegionDropdown(false);
+                      }}
                       style={[
-                        styles.dropdownItemText,
-                        selectedRegion === item && styles.dropdownItemTextSelected,
+                        styles.dropdownItem,
+                        selectedRegion === item && styles.dropdownItemSelected,
                       ]}
                     >
-                      {item}
-                    </Text>
-                  </Pressable>
-                )}
-              />
-            </View>
-          )}
-        </View>
+                      <Text
+                        style={[
+                          styles.dropdownItemText,
+                          selectedRegion === item && styles.dropdownItemTextSelected,
+                        ]}
+                      >
+                        {item}
+                      </Text>
+                    </Pressable>
+                  )}
+                />
+              </View>
+            )}
+          </View>
 
-        {/* Services Offered */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Serviços que você oferece</Text>
-          <View style={styles.servicesGrid}>
-            {services.map((service) => {
-              const isSelected = selectedServices.includes(service.id);
-              return (
-                <Pressable
-                  key={service.id}
-                  onPress={() => toggleService(service.id)}
-                  style={[
-                    styles.serviceCard,
-                    {
-                      borderColor: isSelected ? colors.primary : colors.border,
-                      backgroundColor: isSelected ? 'rgba(31, 128, 234, 0.05)' : colors.card,
-                    },
-                  ]}
-                >
-                  <Text style={styles.serviceEmoji}>{service.emoji}</Text>
-                  <Text
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Serviços que você oferece</Text>
+            <View style={styles.servicesGrid}>
+              {services.map((service) => {
+                const isSelected = selectedServices.includes(service.id);
+                return (
+                  <Pressable
+                    key={service.id}
+                    onPress={() => toggleService(service.id)}
                     style={[
-                      styles.serviceLabel,
-                      { color: isSelected ? colors.primary : colors.cardForeground },
+                      styles.serviceCard,
+                      {
+                        borderColor: isSelected ? colors.primary : colors.border,
+                        backgroundColor: isSelected ? 'rgba(31, 128, 234, 0.05)' : colors.card,
+                      },
                     ]}
                   >
-                    {service.label}
-                  </Text>
-                  {isSelected && (
-                    <View style={styles.checkmark}>
-                      <Feather name="check" size={12} color={colors.primaryForeground} />
-                    </View>
-                  )}
-                </Pressable>
-              );
-            })}
+                    <Text style={styles.serviceEmoji}>{service.emoji}</Text>
+                    <Text
+                      style={[
+                        styles.serviceLabel,
+                        { color: isSelected ? colors.primary : colors.cardForeground },
+                      ]}
+                    >
+                      {service.label}
+                    </Text>
+                    {isSelected && (
+                      <View style={styles.checkmark}>
+                        <Feather name="check" size={12} color={colors.primaryForeground} />
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
-        </View>
 
-        {/* Bio */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Pequena descrição sobre você</Text>
-          <TextInput
-            value={bio}
-            onChangeText={setBio}
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Pequena descrição sobre você</Text>
+            <TextInput
+              value={bio}
+              onChangeText={setBio}
             placeholder="Ex: Sou profissional há 5 anos, amo o que faço..."
             placeholderTextColor={colors.mutedForeground}
             maxLength={200}
             multiline
+            onFocus={handleBioFocus}
             style={styles.bioInput}
           />
-          <View style={styles.bioFooter}>
-            <Text style={styles.bioHelper}>Mínimo 20 caracteres</Text>
-            <Text
-              style={[
-                styles.bioCounter,
-                { color: bio.length < 20 ? colors.mutedForeground : colors.primary },
-              ]}
-            >
-              {bio.length}/200
-            </Text>
-          </View>
-        </View>
-
-        {/* Completion Card */}
-        {progress >= 75 && (
-          <View style={styles.completionCard}>
-            <View style={styles.completionDot} />
-            <View>
-              <Text style={styles.completionTitle}>Perfil quase completo!</Text>
-              <Text style={styles.completionText}>
-                Você está pronta para continuar. Pode adicionar mais informações depois.
+            <View style={styles.bioFooter}>
+              <Text style={styles.bioHelper}>Mínimo 20 caracteres</Text>
+              <Text
+                style={[
+                  styles.bioCounter,
+                  { color: bioLength < 20 ? colors.mutedForeground : colors.primary },
+                ]}
+              >
+                {bioLength}/200
               </Text>
             </View>
           </View>
-        )}
-      </ScrollView>
+
+          {progress === 100 && (
+            <View style={styles.completionCard}>
+              <View style={styles.completionDot} />
+              <View>
+                <Text style={styles.completionTitle}>Perfil completo!</Text>
+                <Text style={styles.completionText}>
+                  Você preencheu todos os requisitos desta etapa e já pode continuar.
+                </Text>
+              </View>
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.md }]}>
         <AppButton
@@ -320,7 +350,7 @@ export default function OnboardingProfileScreen({ navigation }) {
           }
         />
         {!canContinue && (
-          <Text style={styles.footerHelper}>Complete pelo menos 75% do perfil para continuar</Text>
+          <Text style={styles.footerHelper}>Preencha todos os campos obrigatórios para chegar a 100%</Text>
         )}
       </View>
     </View>
@@ -378,6 +408,9 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: colors.primaryForeground,
     borderRadius: radius.full,
+  },
+  scrollWrap: {
+    flex: 1,
   },
   scrollContent: {
     paddingHorizontal: spacing.lg,
@@ -526,6 +559,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: spacing.sm,
     right: spacing.sm,
+  },
+  textInput: {
+    backgroundColor: colors.card,
+    borderWidth: 2,
+    borderColor: 'rgba(26, 62, 112, 0.1)',
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    color: colors.cardForeground,
+    fontSize: typography.fontSize.sm,
   },
   bioInput: {
     backgroundColor: colors.card,

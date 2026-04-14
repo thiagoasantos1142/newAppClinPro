@@ -26,6 +26,7 @@ const buildQuestionsPayload = (answers = {}) => ({
 });
 
 const buildProfilePayload = (answers = {}) => ({
+  name: answers.name || '',
   bio: answers.bio || '',
   experience_years: Number.isFinite(answers.experience_years)
     ? answers.experience_years
