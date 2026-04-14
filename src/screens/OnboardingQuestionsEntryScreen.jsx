@@ -24,20 +24,18 @@ export default function OnboardingQuestionsEntryScreen({ navigation }) {
       return;
     }
 
-      // Se o backend ainda retorna "welcome" mas a etapa ja foi concluida,
-      // liberamos o fluxo de questions.
-      if (status.current_step !== 'questions') {
-        if (status.current_step === 'welcome' && status?.steps?.welcome) {
-          // navigation.replace('QuestionsClients');
-          navigation.replace('MainTabs');
-          return;
-        }
+    // Se o backend ainda retorna "welcome" mas a etapa ja foi concluida,
+    // liberamos o fluxo de questions.
+    if (status.current_step !== 'questions') {
+      if (status.current_step === 'welcome' && status?.steps?.welcome) {
+        navigation.replace('QuestionsClients');
+        return;
+      }
       navigation.replace(getRouteForStep(status.current_step));
       return;
     }
 
-    // navigation.replace('QuestionsClients');
-    navigation.replace('MainTabs');
+    navigation.replace('QuestionsClients');
   }, [status, navigation]);
 
   if (isLoading) {

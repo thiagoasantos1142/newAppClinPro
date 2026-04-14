@@ -1,44 +1,24 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { Alert } from 'react-native';
 import ModuleTemplate from './shared/ModuleTemplate.jsx';
 import { useOnboarding } from '../hooks/useOnboarding';
-import { canAccessStep, getRouteForStep } from '../navigation/onboardingStepMap';
 
 export default function OnboardingAccountIntroScreen({ navigation }) {
-  const { status, completeStep, loading } = useOnboarding();
+  const { status, completeStep, saving } = useOnboarding();
   const progressPercent = status?.progress_percent ?? 0;
-
-  useEffect(() => {
-    if (!status) return;
-    if (status.completed) {
-      navigation.navigate('MainTabs');
-      return;
-    }
-    if (!canAccessStep(status, 'account_intro')) {
-      navigation.navigate(getRouteForStep(status.current_step));
-    }
-  }, [status, navigation]);
 
   const handleActivate = useCallback(async () => {
     try {
-      if (loading || !status) {
+      if (saving || !status) {
         return;
       }
-      if (status.current_step !== 'account_intro') {
-        navigation.navigate(getRouteForStep(status.current_step));
-        return;
-      }
-      if (status?.steps?.account_intro) {
-        navigation.navigate(getRouteForStep(status.current_step));
-        return;
-      }
-      const result = await completeStep('account_intro', { understood: true, accept_terms: true });
-      navigation.navigate(getRouteForStep(result.current_step));
+      await completeStep('account_intro', { understood: true, accept_terms: true });
+      navigation.navigate('OnboardingKYC');
     } catch (err) {
       const message = err?.response?.data?.message || err?.message || 'Nao foi possivel concluir esta etapa.';
       Alert.alert('Erro', message);
     }
-  }, [completeStep, navigation, status, loading]);
+  }, [completeStep, navigation, status, saving]);
 
   const handleSkip = useCallback(() => {
     Alert.alert('Etapa obrigatoria', 'Para seguir, precisamos concluir esta etapa.' );
@@ -47,13 +27,13 @@ export default function OnboardingAccountIntroScreen({ navigation }) {
   return (
     <ModuleTemplate
       navigation={navigation}
-      title="Fase 3 - Receber com Seguranca"
-      subtitle="Receba direto no app, sem depender de terceiros 💳"
+      title="Conta digital"
+      subtitle="Receba com seguranca direto pelo app."
       hero={{
-        title: 'Progresso da jornada',
+        title: 'Fase 3 da jornada',
         value: `${progressPercent}%`,
         progress: progressPercent,
-        note: 'Conquista desbloqueada: Conta Ativada.',
+        note: 'Ative sua conta para organizar ganhos e receber com mais controle.',
       }}
       sections={[
         {
@@ -62,8 +42,8 @@ export default function OnboardingAccountIntroScreen({ navigation }) {
         },
       ]}
       actions={[
-        { label: 'Ativar minha conta', onPress: handleActivate, icon: 'arrow-right', disabled: loading || !status },
-        { label: 'Deixar para depois', onPress: handleSkip, variant: 'secondary', icon: 'clock', disabled: loading || !status },
+        { label: 'Ativar minha conta', onPress: handleActivate, icon: 'arrow-right', disabled: saving || !status },
+        { label: 'Deixar para depois', onPress: handleSkip, variant: 'secondary', icon: 'clock', disabled: saving || !status },
       ]}
     />
   );

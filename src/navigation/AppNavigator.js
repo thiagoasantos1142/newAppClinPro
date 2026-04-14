@@ -48,7 +48,6 @@ import ReviewsListScreen from '../screens/ReviewsListScreen.jsx';
 import VerificationStatusScreen from '../screens/VerificationStatusScreen.jsx';
 import ProfessionalScoreScreen from '../screens/ProfessionalScoreScreen.jsx';
 import OnboardingWelcomeScreen from '../screens/OnboardingWelcomeScreen.jsx';
-import OnboardingQuestionsEntryScreen from '../screens/OnboardingQuestionsEntryScreen';
 import QuestionsClientsScreen from '../screens/QuestionsClientsScreen';
 import QuestionsExperienceScreen from '../screens/QuestionsExperienceScreen';
 import QuestionsGoalScreen from '../screens/QuestionsGoalScreen';
@@ -176,7 +175,6 @@ function OnboardingFlow({ initialRouteName }) {
     <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRouteName}>
       <Stack.Screen name="MainTabs" component={MainTabs} />
       <Stack.Screen name="OnboardingWelcome" component={OnboardingWelcomeScreen} />
-      <Stack.Screen name="OnboardingQuestionsEntry" component={OnboardingQuestionsEntryScreen} />
       <Stack.Screen name="QuestionsClients" component={QuestionsClientsScreen} />
       <Stack.Screen name="QuestionsExperience" component={QuestionsExperienceScreen} />
       <Stack.Screen name="QuestionsGoal" component={QuestionsGoalScreen} />
@@ -207,12 +205,9 @@ function OnboardingGate() {
     }
   }, [dispatch, isAuthenticated, loading, status]);
 
-  const initialRouteName =
-    status?.steps?.welcome && status?.current_step === 'welcome'
-      ? 'OnboardingQuestionsEntry'
-      : getRouteForStep(status?.current_step || 'welcome');
+  const initialRouteName = getRouteForStep(status?.current_step || 'welcome');
 
-  if (loading) {
+  if (loading && !status) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <Text>Carregando onboarding...</Text>

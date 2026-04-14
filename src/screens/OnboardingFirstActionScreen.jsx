@@ -1,22 +1,9 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import ModuleTemplate from './shared/ModuleTemplate.jsx';
 import { useOnboarding } from '../hooks/useOnboarding';
-import { getRouteForStep } from '../navigation/onboardingStepMap';
 
 export default function OnboardingFirstActionScreen({ navigation }) {
   const { status, loading } = useOnboarding();
-
-  useEffect(() => {
-    if (!status) return;
-    if (status.completed) {
-      navigation.navigate('MainTabs');
-      return;
-    }
-    const canShow = status.steps?.profile && status.current_step === 'account_intro';
-    if (!canShow) {
-      navigation.navigate(getRouteForStep(status.current_step));
-    }
-  }, [status, navigation]);
 
   return (
     <ModuleTemplate

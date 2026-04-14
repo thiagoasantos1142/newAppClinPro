@@ -1,6 +1,6 @@
 export const onboardingStepToRoute = {
   welcome: 'OnboardingWelcome',
-  questions: 'OnboardingQuestionsEntry',
+  questions: 'QuestionsClients',
   profile: 'OnboardingProfile',
   account_intro: 'OnboardingAccountIntro',
   kyc: 'OnboardingKYC',

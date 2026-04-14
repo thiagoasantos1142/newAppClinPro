@@ -1,14 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton, ProgressBar } from '../components/ui.jsx';
 import { colors, radius, spacing, typography } from '../theme/tokens';
+import { useGlobalLoading } from '../hooks/useGlobalLoading';
 import { useOnboarding } from '../hooks/useOnboarding';
-import { canAccessStep, getRouteForStep } from '../navigation/onboardingStepMap';
 
 export default function OnboardingWelcomeScreen({ navigation }) {
-  const { status, completeStep, loading, refresh } = useOnboarding();
+  const { status, completeStep, saving } = useOnboarding();
+  const { showGlobalLoading, hideGlobalLoading } = useGlobalLoading();
   const [error, setError] = useState(null);
   const insets = useSafeAreaInsets();
 
@@ -20,58 +21,31 @@ export default function OnboardingWelcomeScreen({ navigation }) {
   const currentStepNumber = Math.min(completedSteps + 1, totalSteps);
   const progressPercent = status?.progress_percent ?? 0;
 
-  useEffect(() => {
-    if (!status) return;
-    if (status.completed) {
-      navigation.navigate('MainTabs');
-      return;
-    }
-    if (status?.steps?.welcome && status.current_step === 'welcome') {
-      navigation.reset({
-        index: 0,
-        // routes: [{ name: 'QuestionsClients' }],
-        routes: [{ name: 'MainTabs' }],
-      });
-      return;
-    }
-    if (!canAccessStep(status, 'welcome')) {
-      navigation.navigate(getRouteForStep(status.current_step));
-    }
-  }, [status, navigation]);
-
-  const handleStart = useCallback(async () => {
-    try {
-      setError(null);
-      if (loading) {
-        return;
-      }
-      const currentStatus = status || (await refresh());
-      if (!currentStatus) {
-        return;
-      }
-      if (currentStatus?.steps?.welcome) {
-        if (currentStatus.current_step === 'welcome') {
-          navigation.reset({
-            index: 0,
-            // routes: [{ name: 'QuestionsClients' }],
-            routes: [{ name: 'MainTabs' }],
-          });
+  const handleStart = useCallback(() => {
+    const run = async () => {
+      try {
+        setError(null);
+        if (saving) {
           return;
         }
-        navigation.navigate(getRouteForStep(currentStatus.current_step));
-        return;
+        showGlobalLoading('Salvando progresso...');
+        await completeStep('welcome');
+        navigation.navigate('QuestionsClients');
+      } catch (err) {
+        console.error('[OnboardingWelcome] erro ao concluir step welcome', {
+          message: err?.message,
+          response: err?.response?.data,
+          status: err?.response?.status,
+        });
+        const message = err?.response?.data?.message || err?.message || 'Nao foi possivel concluir esta etapa.';
+        setError(message);
+      } finally {
+        hideGlobalLoading();
       }
-      if (currentStatus.current_step !== 'welcome') {
-        navigation.navigate(getRouteForStep(currentStatus.current_step));
-        return;
-      }
-      const result = await completeStep('welcome');
-      navigation.navigate(getRouteForStep(result.current_step));
-    } catch (err) {
-      const message = err?.response?.data?.message || err?.message || 'Nao foi possivel concluir esta etapa.';
-      setError(message);
-    }
-  }, [completeStep, navigation, status, loading, refresh]);
+    };
+
+    void run();
+  }, [completeStep, saving, navigation, showGlobalLoading, hideGlobalLoading]);
 
   return (
     <View style={styles.container}>
@@ -131,12 +105,12 @@ export default function OnboardingWelcomeScreen({ navigation }) {
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.sm }]}>
         <AppButton
-          title={loading ? 'Carregando...' : 'Comecar'}
+          title={saving ? 'Carregando...' : 'Comecar'}
           onPress={handleStart}
-          disabled={loading}
+          disabled={saving}
           style={styles.primaryButton}
           left={
-            loading ? (
+            saving ? (
               <ActivityIndicator color={colors.primaryForeground} />
             ) : (
               <Feather name="arrow-right" size={18} color={colors.primaryForeground} />

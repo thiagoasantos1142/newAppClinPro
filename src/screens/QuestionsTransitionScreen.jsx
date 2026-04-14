@@ -16,7 +16,7 @@ import { getRouteForStep } from '../navigation/onboardingStepMap';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 
 export default function QuestionsTransitionScreen({ navigation }) {
-  const { status, completeStep, loading } = useOnboarding();
+  const { status, completeStep, saving } = useOnboarding();
   const { questionsData, resetQuestionsData } = useQuestionsFlow();
   const [error, setError] = useState(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -92,11 +92,12 @@ export default function QuestionsTransitionScreen({ navigation }) {
       setError(null);
       await completeStep('questions', buildQuestionsPayload(questionsData));
       resetQuestionsData();
+      navigation.navigate('OnboardingProfile');
     } catch (err) {
       const message = err?.response?.data?.message || err?.message || 'Erro ao continuar.';
       setError(message);
     }
-  }, [questionsData, completeStep, resetQuestionsData, buildQuestionsPayload]);
+  }, [questionsData, completeStep, resetQuestionsData, buildQuestionsPayload, navigation]);
 
   if (isInitialLoading) {
     return (
@@ -171,17 +172,18 @@ export default function QuestionsTransitionScreen({ navigation }) {
               </View>
             </View>
           ) : null}
+
         </View>
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.sm }]}>
         <AppButton
-          title={loading ? 'Salvando...' : 'Continuar'}
+          title={saving ? 'Salvando...' : 'Continuar'}
           onPress={handleContinue}
-          disabled={loading}
+          disabled={saving}
           style={styles.primaryButton}
           left={
-            loading ? (
+            saving ? (
               <ActivityIndicator color={colors.primaryForeground} />
             ) : (
               <Feather name="arrow-right" size={18} color={colors.primaryForeground} />

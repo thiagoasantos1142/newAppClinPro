@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,13 +16,11 @@ import { AppButton } from '../components/ui.jsx';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { useQuestionsFlow } from '../hooks/useQuestionsFlow';
-import { getRouteForStep } from '../navigation/onboardingStepMap';
 
 export default function OnboardingProfileScreen({ navigation }) {
-  const { status, completeStep, loading } = useOnboarding();
+  const { status, completeStep, saving } = useOnboarding();
   const { questionsData, resetQuestionsData } = useQuestionsFlow();
   const insets = useSafeAreaInsets();
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const [hasPhoto, setHasPhoto] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState('');
@@ -53,21 +52,6 @@ export default function OnboardingProfileScreen({ navigation }) {
   const totalSteps = 7;
   const completedSteps = status?.steps ? Object.values(status.steps).filter(Boolean).length : 0;
   const currentStepNumber = Math.min(completedSteps + 1, totalSteps);
-
-  useEffect(() => {
-    if (!status) {
-      setIsInitialLoading(true);
-      return;
-    }
-    setIsInitialLoading(false);
-    if (status.completed) {
-      navigation.navigate('MainTabs');
-      return;
-    }
-    if (status.current_step !== 'profile') {
-      navigation.navigate(getRouteForStep(status.current_step));
-    }
-  }, [status, navigation]);
 
   const toggleService = useCallback((serviceId) => {
     setSelectedServices((prev) =>
@@ -132,7 +116,7 @@ export default function OnboardingProfileScreen({ navigation }) {
     services,
   ]);
 
-  if (isInitialLoading) {
+  if (!status) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -166,34 +150,34 @@ export default function OnboardingProfileScreen({ navigation }) {
         {/* Photo Upload */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Foto de perfil</Text>
-          <View style={styles.photoSection}>
-            <View
-              style={[
-                styles.photoPicker,
-                {
-                  borderColor: hasPhoto ? colors.primary : colors.border,
-                  backgroundColor: hasPhoto ? 'rgba(31, 128, 234, 0.05)' : colors.accent,
-                },
-              ]}
-            >
-              {hasPhoto ? (
-                <Text style={styles.photoEmoji}>👩</Text>
-              ) : (
-                <Feather name="camera" size={32} color={colors.mutedForeground} />
-              )}
+          <View style={styles.photoCard}>
+            <View style={styles.photoSection}>
+              <Pressable
+                onPress={() => setHasPhoto(!hasPhoto)}
+                style={styles.photoPickerWrap}
+              >
+                <View
+                  style={[
+                    styles.photoPicker,
+                    {
+                      borderColor: hasPhoto ? colors.primary : 'rgba(26, 62, 112, 0.08)',
+                      backgroundColor: hasPhoto ? 'rgba(31, 128, 234, 0.08)' : '#F5F8FC',
+                    },
+                  ]}
+                >
+                  {hasPhoto ? (
+                    <Text style={styles.photoEmoji}>👩</Text>
+                  ) : (
+                    <Feather name="user" size={42} color={colors.mutedForeground} />
+                  )}
+                </View>
+                <View style={styles.photoBadge}>
+                  <Feather name="camera" size={16} color={colors.primaryForeground} />
+                </View>
+              </Pressable>
+              <Text style={styles.photoTitle}>{hasPhoto ? 'Toque para trocar sua foto' : 'Adicione sua melhor foto'}</Text>
+              <Text style={styles.photoSubtitle}>Um perfil com foto transmite mais confiança para clientes.</Text>
             </View>
-            <Pressable
-              onPress={() => setHasPhoto(!hasPhoto)}
-              style={[styles.photoButton, { flexGrow: 1 }]}
-            >
-              <Feather name="camera" size={20} color={colors.primary} />
-              <View style={styles.photoButtonText}>
-                <Text style={styles.photoButtonTitle}>
-                  {hasPhoto ? 'Mudar foto' : 'Adicionar foto'}
-                </Text>
-                <Text style={styles.photoButtonSubtitle}>Câmera ou galeria</Text>
-              </View>
-            </Pressable>
           </View>
         </View>
 
@@ -328,11 +312,11 @@ export default function OnboardingProfileScreen({ navigation }) {
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.md }]}>
         <AppButton
-          title={loading ? 'Salvando...' : 'Continuar'}
+          title={saving ? 'Salvando...' : 'Continuar'}
           onPress={handleContinue}
-          disabled={!canContinue || loading}
+          disabled={!canContinue || saving}
           left={
-            loading ? (
+            saving ? (
               <ActivityIndicator color={colors.primaryForeground} />
             ) : (
               <Feather name="arrow-right" size={18} color={colors.primaryForeground} />
@@ -414,44 +398,60 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   photoSection: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+  },
+  photoCard: {
+    backgroundColor: colors.card,
+    borderWidth: 2,
+    borderColor: 'rgba(26, 62, 112, 0.1)',
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xl,
+  },
+  photoPickerWrap: {
+    width: 132,
+    height: 132,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
   },
   photoPicker: {
-    width: 96,
-    height: 96,
+    width: 116,
+    height: 116,
     borderRadius: radius.full,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   photoEmoji: {
-    fontSize: 48,
+    fontSize: 54,
   },
-  photoButton: {
-    flexDirection: 'row',
+  photoBadge: {
+    position: 'absolute',
+    right: 6,
+    bottom: 8,
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: colors.primary,
     alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: 'rgba(26, 62, 112, 0.1)',
-    borderRadius: radius.xl,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: colors.background,
   },
-  photoButtonText: {
-    flex: 1,
-  },
-  photoButtonTitle: {
+  photoTitle: {
     color: colors.cardForeground,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.bold,
+    textAlign: 'center',
   },
-  photoButtonSubtitle: {
+  photoSubtitle: {
+    marginTop: spacing.xs,
     color: colors.mutedForeground,
     fontSize: typography.fontSize.xs,
-    marginTop: spacing.xs,
+    lineHeight: 18,
+    textAlign: 'center',
+    maxWidth: 260,
   },
   selectButton: {
     flexDirection: 'row',
@@ -500,10 +500,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.md,
-    justifyContent: 'space-between',
   },
   serviceCard: {
-    width: '48%',
+    width: '47%',
     backgroundColor: colors.card,
     borderWidth: 2,
     borderRadius: radius.xl,
