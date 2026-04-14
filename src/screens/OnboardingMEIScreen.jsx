@@ -9,9 +9,8 @@ export default function OnboardingMEIScreen({ navigation }) {
   const [error, setError] = useState(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  const totalSteps = 7;
-  const completedSteps = status?.steps ? Object.values(status.steps).filter(Boolean).length : 0;
-  const currentStepNumber = Math.min(completedSteps + 1, totalSteps);
+  const totalSteps = 6;
+  const currentStepNumber = 5;
 
   const options = [
     { value: 'sim', label: 'Sim' },

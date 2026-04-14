@@ -49,10 +49,6 @@ export default function OnboardingProfileScreen({ navigation }) {
     { id: 'cozinha', label: 'Cozinha\nEspecial', emoji: '🍳' },
   ];
 
-  const totalSteps = 7;
-  const completedSteps = status?.steps ? Object.values(status.steps).filter(Boolean).length : 0;
-  const currentStepNumber = Math.min(completedSteps + 1, totalSteps);
-
   const toggleService = useCallback((serviceId) => {
     setSelectedServices((prev) =>
       prev.includes(serviceId) ? prev.filter((s) => s !== serviceId) : [...prev, serviceId]

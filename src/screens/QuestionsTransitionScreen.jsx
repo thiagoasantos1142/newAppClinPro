@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppButton, ProgressBar } from '../components/ui.jsx';
+import { AppButton } from '../components/ui.jsx';
+import OnboardingStepProgress from '../components/OnboardingStepProgress.jsx';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { useQuestionsFlow } from '../hooks/useQuestionsFlow';
 import { getRouteForStep } from '../navigation/onboardingStepMap';
@@ -21,10 +22,6 @@ export default function QuestionsTransitionScreen({ navigation }) {
   const [error, setError] = useState(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const insets = useSafeAreaInsets();
-
-  const totalSteps = 7;
-  const completedSteps = status?.steps ? Object.values(status.steps).filter(Boolean).length : 0;
-  const currentStepNumber = Math.min(completedSteps + 1, totalSteps);
 
   const buildQuestionsPayload = useCallback((raw) => {
     const clients = raw?.clients;
@@ -112,12 +109,7 @@ export default function QuestionsTransitionScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.progressWrap, { paddingTop: insets.top + spacing.md }]}>
-        <ProgressBar value={(currentStepNumber / totalSteps) * 100} height={6} />
-        <Text style={styles.progressText}>
-          Passo {currentStepNumber} de {totalSteps}
-        </Text>
-      </View>
+      <OnboardingStepProgress step={6} totalSteps={6} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.headerWrap}>
@@ -209,17 +201,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     color: colors.mutedForeground,
     fontSize: typography.fontSize.md,
-  },
-  progressWrap: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  progressText: {
-    marginTop: spacing.sm,
-    textAlign: 'center',
-    color: colors.mutedForeground,
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.medium,
   },
   scrollContent: {
     paddingBottom: spacing.lg,

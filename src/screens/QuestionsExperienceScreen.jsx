@@ -10,10 +10,6 @@ export default function QuestionsExperienceScreen({ navigation }) {
   const [error] = useState(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  const totalSteps = 7;
-  const completedSteps = status?.steps ? Object.values(status.steps).filter(Boolean).length : 0;
-  const currentStepNumber = Math.min(completedSteps + 1, totalSteps);
-
   const options = [
     { value: 'iniciante', label: 'Começando agora' },
     { value: 'menos-1-ano', label: 'Menos de 1 ano' },
@@ -42,8 +38,8 @@ export default function QuestionsExperienceScreen({ navigation }) {
 
   return (
     <QuestionCard
-      currentStepNumber={currentStepNumber}
-      totalSteps={totalSteps}
+      currentStepNumber={3}
+      totalSteps={6}
       headerEmoji="⭐"
       headerText="Conhecendo sua jornada"
       headerTitle="Sua experiência importa"

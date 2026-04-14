@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
@@ -9,8 +9,8 @@ import {
   View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppButton, ProgressBar } from '../components/ui.jsx';
+import { AppButton } from '../components/ui.jsx';
+import OnboardingStepProgress from '../components/OnboardingStepProgress.jsx';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { canAccessStep, getRouteForStep } from '../navigation/onboardingStepMap';
@@ -19,16 +19,6 @@ export default function OnboardingQuestionsScreen({ navigation }) {
   const { status, completeStep, loading } = useOnboarding();
   const [selectedOption, setSelectedOption] = useState(null);
   const [error, setError] = useState(null);
-  const insets = useSafeAreaInsets();
-  const progressPercent = status?.progress_percent ?? 0;
-
-  const totalSteps = 7;
-  const completedSteps = useMemo(() => {
-    if (!status?.steps) return 0;
-    return Object.values(status.steps).filter(Boolean).length;
-  }, [status]);
-  const currentStepNumber = Math.min(completedSteps + 1, totalSteps);
-
   const options = [
     { value: '1-2', label: '1 a 2 dias' },
     { value: '3-4', label: '3 a 4 dias' },
@@ -100,10 +90,7 @@ export default function OnboardingQuestionsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.progressWrap, { paddingTop: insets.top + spacing.md }]}>
-        <ProgressBar value={progressPercent} height={6} />
-        <Text style={styles.progressText}>Passo {currentStepNumber} de {totalSteps}</Text>
-      </View>
+      <OnboardingStepProgress step={2} totalSteps={6} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.headerWrap}>
@@ -189,17 +176,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  progressWrap: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  progressText: {
-    marginTop: spacing.sm,
-    textAlign: 'center',
-    color: colors.mutedForeground,
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.medium,
   },
   scrollContent: {
     paddingBottom: spacing.lg,

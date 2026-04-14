@@ -10,10 +10,6 @@ export default function QuestionsGoalScreen({ navigation }) {
   const [error] = useState(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  const totalSteps = 7;
-  const completedSteps = status?.steps ? Object.values(status.steps).filter(Boolean).length : 0;
-  const currentStepNumber = Math.min(completedSteps + 1, totalSteps);
-
   const options = [
     { value: 'ate-2000', label: 'Até R$ 2.000' },
     { value: '2000-4000', label: 'R$ 2.000 a R$ 4.000' },
@@ -42,8 +38,8 @@ export default function QuestionsGoalScreen({ navigation }) {
 
   return (
     <QuestionCard
-      currentStepNumber={currentStepNumber}
-      totalSteps={totalSteps}
+      currentStepNumber={4}
+      totalSteps={6}
       headerEmoji="🎯"
       headerText="Vamos sonhar junto"
       headerTitle="Suas metas importam"

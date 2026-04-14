@@ -10,10 +10,6 @@ export default function QuestionsClientsScreen({ navigation }) {
   const [error] = useState(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  const totalSteps = 7;
-  const completedSteps = status?.steps ? Object.values(status.steps).filter(Boolean).length : 0;
-  const currentStepNumber = Math.min(completedSteps + 1, totalSteps);
-
   const options = [
     { value: 'varios', label: 'Sim, vários' },
     { value: 'alguns', label: 'Sim, alguns' },
@@ -41,8 +37,8 @@ export default function QuestionsClientsScreen({ navigation }) {
 
   return (
     <QuestionCard
-      currentStepNumber={currentStepNumber}
-      totalSteps={totalSteps}
+      currentStepNumber={2}
+      totalSteps={6}
       headerEmoji="💜"
       headerText="Entendendo sua estabilidade"
       headerTitle="Vamos mapear seus clientes"

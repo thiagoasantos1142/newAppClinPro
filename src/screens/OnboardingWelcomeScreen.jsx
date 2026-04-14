@@ -1,25 +1,18 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppButton, ProgressBar } from '../components/ui.jsx';
+import { AppButton } from '../components/ui.jsx';
+import OnboardingStepProgress from '../components/OnboardingStepProgress.jsx';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 import { useGlobalLoading } from '../hooks/useGlobalLoading';
 import { useOnboarding } from '../hooks/useOnboarding';
 
 export default function OnboardingWelcomeScreen({ navigation }) {
-  const { status, completeStep, saving } = useOnboarding();
+  const { completeStep, saving } = useOnboarding();
   const { showGlobalLoading, hideGlobalLoading } = useGlobalLoading();
   const [error, setError] = useState(null);
   const insets = useSafeAreaInsets();
-
-  const totalSteps = 7;
-  const completedSteps = useMemo(() => {
-    if (!status?.steps) return 0;
-    return Object.values(status.steps).filter(Boolean).length;
-  }, [status]);
-  const currentStepNumber = Math.min(completedSteps + 1, totalSteps);
-  const progressPercent = status?.progress_percent ?? 0;
 
   const handleStart = useCallback(() => {
     const run = async () => {
@@ -52,10 +45,7 @@ export default function OnboardingWelcomeScreen({ navigation }) {
       <View style={styles.backgroundOrbOne} />
       <View style={styles.backgroundOrbTwo} />
 
-      <View style={[styles.progressWrap, { paddingTop: insets.top + spacing.md }]}>
-        <ProgressBar value={progressPercent} height={6} />
-        <Text style={styles.progressText}>Passo {currentStepNumber} de {totalSteps}</Text>
-      </View>
+      <OnboardingStepProgress step={1} totalSteps={6} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroBubble}>
@@ -145,17 +135,6 @@ const styles = StyleSheet.create({
     height: 260,
     borderRadius: 130,
     backgroundColor: 'rgba(31,128,234,0.06)',
-  },
-  progressWrap: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  progressText: {
-    marginTop: spacing.sm,
-    textAlign: 'center',
-    color: colors.mutedForeground,
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.medium,
   },
   content: {
     paddingHorizontal: spacing.xl,
