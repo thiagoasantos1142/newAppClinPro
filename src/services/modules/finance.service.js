@@ -30,6 +30,21 @@ export const getAccountOverview = async () => {
   return data;
 };
 
+export const getAccountStatus = async () => {
+  const { data } = await api.get('/clinpro/account/status');
+  return data;
+};
+
+export const createAccount = async () => {
+  const { data } = await api.post('/clinpro/account/create');
+  return data;
+};
+
+export const updateAccountData = async (payload) => {
+  const { data } = await api.post('/clinpro/account/update', payload);
+  return data;
+};
+
 export const createAccountTransfer = async (payload) => {
   const { data } = await api.post('/clinpro/account/transfers', payload);
   return data;

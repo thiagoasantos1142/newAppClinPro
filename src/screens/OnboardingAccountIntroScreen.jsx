@@ -15,7 +15,7 @@ export default function OnboardingAccountIntroScreen({ navigation }) {
       await completeStep('account_intro', { understood: true, accept_terms: true });
       navigation.navigate('OnboardingKYC');
     } catch (err) {
-      const message = err?.response?.data?.message || err?.message || 'Nao foi possivel concluir esta etapa.';
+      const message = err?.response?.data?.message || err?.message || 'Não foi possível concluir esta etapa.';
       Alert.alert('Erro', message);
     }
   }, [completeStep, navigation, status, saving]);
@@ -28,7 +28,7 @@ export default function OnboardingAccountIntroScreen({ navigation }) {
     <ModuleTemplate
       navigation={navigation}
       title="Conta digital"
-      subtitle="Receba com seguranca direto pelo app."
+      subtitle="Receba com segurança direto pelo app."
       hero={{
         title: 'Fase 3 da jornada',
         value: `${progressPercent}%`,
@@ -37,7 +37,7 @@ export default function OnboardingAccountIntroScreen({ navigation }) {
       }}
       sections={[
         {
-          title: 'Com a conta digital voce:',
+          title: 'Com a conta digital você:',
           body: '✔ Recebe via Pix\n✔ Organiza seus ganhos\n✔ Separa vida pessoal do trabalho',
         },
       ]}
