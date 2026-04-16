@@ -1,10 +1,11 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Animated, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Animated, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import CountryFlag from 'react-native-country-flag';
 import { useDispatch, useSelector } from 'react-redux';
 import AppScreenHeader from '../components/AppScreenHeader.jsx';
+import CustomErrorModal from '../components/CustomErrorModal.jsx';
 import HeaderActionButton from '../components/HeaderActionButton.jsx';
 import { AppButton, AppCard, Badge, ProgressBar } from '../components/ui.jsx';
 import { colors, radius, spacing, typography } from '../theme/tokens';
@@ -385,9 +386,15 @@ function formatCurrency(value, hidden) {
   return `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function buildDefaultErrorMessage(message) {
+  return `${message}\n\nSe o problema persistir, tente novamente mais tarde ou entre em contato com o suporte.`;
+}
+
+const FORCED_ACCOUNT_STATUS = 'APPROVED';
+
 export default function DigitalAccountOverviewScreen({ navigation }) {
   const dispatch = useDispatch();
-  const [balanceVisible, setBalanceVisible] = useState(true);
+  const [balanceVisible, setBalanceVisible] = useState(false);
   const [accountStatus, setAccountStatus] = useState(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [statusError, setStatusError] = useState(null);
@@ -397,7 +404,16 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
   const [postalCodeLookupError, setPostalCodeLookupError] = useState(null);
   const [postalCodeResolved, setPostalCodeResolved] = useState(false);
   const [submittingStep, setSubmittingStep] = useState(false);
-  const [submitError, setSubmitError] = useState(null);
+  const [errorModalMessage, setErrorModalMessage] = useState('');
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [statusModalState, setStatusModalState] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    tone: 'info',
+  });
+  const [statusModalLoading, setStatusModalLoading] = useState(false);
+  const [lastShownAccountStatus, setLastShownAccountStatus] = useState(null);
   const {
     form: accountForm = emptyAccountForm,
     currentStep = 0,
@@ -420,7 +436,6 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
             setAccountStatus(response);
             setShowPhoneCountrySelect(false);
             setPostalCodeLookupError(null);
-            setSubmitError(null);
             if (response?.has_account === false && !hydrated) {
               const initialPostalCode = applyFieldMask('postalCode', response?.account_data?.postalCode ?? '');
               let viaCepData = null;
@@ -490,10 +505,58 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
     }, [])
   );
 
+  useEffect(() => {
+    const currentStatus =
+      FORCED_ACCOUNT_STATUS ||
+      accountStatus?.status ||
+      accountStatus?.account_status ||
+      accountStatus?.account?.status ||
+      null;
+
+    if (!currentStatus || currentStatus === lastShownAccountStatus) {
+      return;
+    }
+
+    if (currentStatus === 'PENDING') {
+      setStatusModalState({
+        visible: true,
+        title: 'Envio de documentos pendente',
+        message:
+          'Algumas documentações ainda precisam ser enviadas para finalizar a criação da sua conta digital.',
+        tone: 'warning',
+      });
+      setLastShownAccountStatus(currentStatus);
+      return;
+    }
+
+    if (currentStatus === 'REJECTED') {
+      setStatusModalState({
+        visible: true,
+        title: 'Documentação rejeitada',
+        message:
+          'Sua documentação foi rejeitada. Revise os arquivos e tente enviar os documentos novamente para continuar a criação da conta digital.',
+        tone: 'danger',
+      });
+      setLastShownAccountStatus(currentStatus);
+      return;
+    }
+
+    if (currentStatus === 'AWAITING_APPROVAL') {
+      setStatusModalState({
+        visible: true,
+        title: 'Aguardando aprovação',
+        message:
+          'Recebemos sua documentação e ela está em análise. Assim que a aprovação for concluída, sua conta digital será finalizada.',
+        tone: 'info',
+      });
+      setLastShownAccountStatus(currentStatus);
+    }
+  }, [accountStatus, lastShownAccountStatus]);
+
   const mockAccount = useMemo(
     () => ({
-      availableBalance: 3250.8,
-      pendingBalance: 450,
+      availableBalance: 0,
+      pendingBalance: 0,
       lastUpdate: 'Atualizado há 2 min',
       transactions: [
         {
@@ -688,12 +751,12 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
       return;
     }
 
-    setSubmitError(null);
     setSubmittingStep(true);
 
     try {
       if (isLastStep) {
         await createAccount();
+        navigation.replace('DigitalAccountOverview');
       } else {
         const payload = buildAccountDataPayload(accountForm, stepPayloadFields[currentStep] || []);
         await updateAccountData(payload);
@@ -701,11 +764,63 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
       }
     } catch (err) {
       const message = err?.response?.data?.message || err?.message || 'Não foi possível salvar esta etapa.';
-      setSubmitError(message);
+      setErrorModalMessage(buildDefaultErrorMessage(message));
+      setErrorModalVisible(true);
     } finally {
       setSubmittingStep(false);
     }
-  }, [accountForm, animateToStep, canContinueCurrentStep, currentStep, isLastStep, submittingStep]);
+  }, [accountForm, animateToStep, canContinueCurrentStep, currentStep, isLastStep, navigation, submittingStep]);
+
+  const handleCloseErrorModal = useCallback(() => {
+    setErrorModalVisible(false);
+    navigation.goBack();
+  }, [navigation]);
+
+  const handleCloseStatusModal = useCallback(() => {
+    setStatusModalState((prev) => ({ ...prev, visible: false }));
+    setStatusModalLoading(false);
+    navigation.goBack();
+  }, [navigation]);
+
+  const handleStatusModalPrimaryAction = useCallback(async () => {
+    const currentStatus =
+      FORCED_ACCOUNT_STATUS ||
+      accountStatus?.status ||
+      accountStatus?.account_status ||
+      accountStatus?.account?.status ||
+      null;
+
+    if (currentStatus === 'AWAITING_APPROVAL') {
+      navigation.goBack();
+      return;
+    }
+
+    const onboardingUrl =
+      accountStatus?.onboarding_url ||
+      accountStatus?.account?.onboarding_url ||
+      accountStatus?.data?.onboarding_url ||
+      null;
+
+    if (!onboardingUrl) {
+      navigation.goBack();
+      return;
+    }
+
+    try {
+      setStatusModalLoading(true);
+      const canOpen = await Linking.canOpenURL(onboardingUrl);
+      if (!canOpen) {
+        navigation.goBack();
+        return;
+      }
+
+      await Linking.openURL(onboardingUrl);
+    } catch {
+      navigation.goBack();
+    } finally {
+      setStatusModalLoading(false);
+    }
+  }, [accountStatus, navigation]);
 
   const groupedFields = useMemo(() => {
     const groups = [];
@@ -774,6 +889,25 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
         style={styles.emptyAccountContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
+        <CustomErrorModal
+          visible={statusModalState.visible}
+          title={statusModalState.title}
+          message={statusModalState.message}
+          tone={statusModalState.tone}
+          buttonLabel={statusModalLoading ? 'Abrindo...' : 'Entendi'}
+          buttonDisabled={statusModalLoading}
+          onButtonPress={handleStatusModalPrimaryAction}
+          onClose={handleCloseStatusModal}
+        />
+
+        <CustomErrorModal
+          visible={errorModalVisible}
+          title="Erro"
+          message={errorModalMessage}
+          tone="danger"
+          onClose={handleCloseErrorModal}
+        />
+
         <AppScreenHeader
           title="Criar Conta Digital"
           subtitle={accountStatus?.message || 'Preencha seus dados para continuar'}
@@ -955,7 +1089,6 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
         </ScrollView>
 
         <View style={styles.formFooter}>
-          {submitError ? <Text style={styles.submitErrorText}>{submitError}</Text> : null}
           <View style={styles.formActionsRow}>
             <AppButton
               title="Voltar"
@@ -978,6 +1111,17 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <CustomErrorModal
+        visible={statusModalState.visible}
+        title={statusModalState.title}
+        message={statusModalState.message}
+        tone={statusModalState.tone}
+        buttonLabel={statusModalLoading ? 'Abrindo...' : 'Entendi'}
+        buttonDisabled={statusModalLoading}
+        onButtonPress={handleStatusModalPrimaryAction}
+        onClose={handleCloseStatusModal}
+      />
+
       <AppScreenHeader
         title="Conta Digital"
         subtitle="Movimente seu saldo e acompanhe seus recebimentos"
@@ -1298,13 +1442,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: colors.border,
-  },
-  submitErrorText: {
-    color: colors.danger,
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 10,
-    textAlign: 'center',
   },
   formActionsRow: {
     flexDirection: 'row',

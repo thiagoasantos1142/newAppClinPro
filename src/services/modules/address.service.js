@@ -1,21 +1,20 @@
-import axios from 'axios';
+import api from '../api';
 
 export const getAddressByPostalCode = async (postalCode) => {
   const digits = String(postalCode || '').replace(/\D/g, '');
-  const { data } = await axios.get(`https://viacep.com.br/ws/${digits}/json/`, {
-    timeout: 10000,
-  });
+  const { data } = await api.get(`/address/cep/${digits}`);
+  const addressData = data?.data;
 
-  if (data?.erro) {
+  if (!data?.success || !addressData) {
     throw new Error('CEP não encontrado.');
   }
 
   return {
-    postalCode: data?.cep || '',
-    address: data?.logradouro || '',
-    complement: data?.complemento || '',
-    province: data?.bairro || '',
-    city: data?.localidade || '',
-    state: data?.uf || '',
+    postalCode: addressData?.zip || '',
+    address: addressData?.street || '',
+    complement: addressData?.complement || '',
+    province: addressData?.neighborhood || '',
+    city: addressData?.city || '',
+    state: addressData?.state || '',
   };
 };
