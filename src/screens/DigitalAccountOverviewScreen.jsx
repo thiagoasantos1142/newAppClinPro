@@ -10,7 +10,7 @@ import HeaderActionButton from '../components/HeaderActionButton.jsx';
 import { AppButton, AppCard, Badge, ProgressBar } from '../components/ui.jsx';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 import { getAddressByPostalCode } from '../services/modules/address.service';
-import { createAccount, getAccountStatus, updateAccountData } from '../services/modules/finance.service';
+import { createAccount, getAccountProviderBalance, getAccountStatus, updateAccountData } from '../services/modules/finance.service';
 import {
   hydrateDigitalAccountDraft,
   setDigitalAccountPhoneCountry,
@@ -396,6 +396,11 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
   const dispatch = useDispatch();
   const [balanceVisible, setBalanceVisible] = useState(false);
   const [accountStatus, setAccountStatus] = useState(null);
+  const [providerBalance, setProviderBalance] = useState({
+    availableBalance: 0,
+    pendingBalance: 0,
+    lastUpdate: 'Atualizado agora',
+  });
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [statusError, setStatusError] = useState(null);
   const [showPhoneCountrySelect, setShowPhoneCountrySelect] = useState(false);
@@ -431,11 +436,42 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
         setStatusError(null);
 
         try {
-          const response = await getAccountStatus();
+          const [response, balanceResponse] = await Promise.all([
+            getAccountStatus(),
+            getAccountProviderBalance().catch(() => null),
+          ]);
           if (isActive) {
             setAccountStatus(response);
             setShowPhoneCountrySelect(false);
             setPostalCodeLookupError(null);
+            setProviderBalance({
+              availableBalance: Number(
+                balanceResponse?.availableBalance ??
+                  balanceResponse?.available_balance ??
+                  balanceResponse?.balance ??
+                  balanceResponse?.data?.availableBalance ??
+                  balanceResponse?.data?.available_balance ??
+                  balanceResponse?.data?.balance ??
+                  0
+              ),
+              pendingBalance: Number(
+                balanceResponse?.pendingBalance ??
+                  balanceResponse?.pending_balance ??
+                  balanceResponse?.blockedBalance ??
+                  balanceResponse?.blocked_balance ??
+                  balanceResponse?.data?.pendingBalance ??
+                  balanceResponse?.data?.pending_balance ??
+                  balanceResponse?.data?.blockedBalance ??
+                  balanceResponse?.data?.blocked_balance ??
+                  0
+              ),
+              lastUpdate:
+                balanceResponse?.lastUpdate ||
+                balanceResponse?.updated_at ||
+                balanceResponse?.data?.lastUpdate ||
+                balanceResponse?.data?.updated_at ||
+                'Atualizado agora',
+            });
             if (response?.has_account === false && !hydrated) {
               const initialPostalCode = applyFieldMask('postalCode', response?.account_data?.postalCode ?? '');
               let viaCepData = null;
@@ -555,9 +591,9 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
 
   const mockAccount = useMemo(
     () => ({
-      availableBalance: 0,
-      pendingBalance: 0,
-      lastUpdate: 'Atualizado há 2 min',
+      availableBalance: providerBalance.availableBalance,
+      pendingBalance: providerBalance.pendingBalance,
+      lastUpdate: providerBalance.lastUpdate,
       transactions: [
         {
           id: 'tx-1',
@@ -585,7 +621,7 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
         },
       ],
     }),
-    []
+    [providerBalance]
   );
 
   const quickActions = [
@@ -608,6 +644,14 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
   ];
 
   const featureCards = [
+    {
+      key: 'pix-area',
+      title: 'Area Pix',
+      subtitle: 'Gerencie suas chaves e recebimentos',
+      icon: <Feather name="zap" size={26} color="#FFFFFF" />,
+      backgroundColor: '#15803D',
+      onPress: () => navigation.navigate('PixArea'),
+    },
     {
       key: 'card',
       title: 'Cartão PagClin',

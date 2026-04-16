@@ -11,6 +11,8 @@ export default function CustomErrorModal({
   buttonLabel = 'Entendi',
   tone = 'danger',
   buttonDisabled = false,
+  secondaryButtonLabel,
+  onSecondaryPress,
   onButtonPress,
   onClose,
 }) {
@@ -38,7 +40,17 @@ export default function CustomErrorModal({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
 
-          <AppButton title={buttonLabel} onPress={onButtonPress || onClose} disabled={buttonDisabled} style={styles.button} />
+          <View style={[styles.actionsRow, secondaryButtonLabel && styles.actionsRowSplit]}>
+            {secondaryButtonLabel ? (
+              <AppButton title={secondaryButtonLabel} variant="ghost" onPress={onSecondaryPress || onClose} style={styles.secondaryButton} />
+            ) : null}
+            <AppButton
+              title={buttonLabel}
+              onPress={onButtonPress || onClose}
+              disabled={buttonDisabled}
+              style={[styles.button, secondaryButtonLabel && styles.primaryButton]}
+            />
+          </View>
         </View>
       </View>
     </Modal>
@@ -116,5 +128,20 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: spacing.lg,
+  },
+  actionsRow: {
+    marginTop: spacing.lg,
+  },
+  actionsRowSplit: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  secondaryButton: {
+    flex: 1,
+    marginTop: 0,
+  },
+  primaryButton: {
+    flex: 1,
+    marginTop: 0,
   },
 });
