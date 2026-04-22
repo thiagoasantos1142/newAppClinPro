@@ -10,7 +10,13 @@ import HeaderActionButton from '../components/HeaderActionButton.jsx';
 import { AppButton, AppCard, Badge, ProgressBar } from '../components/ui.jsx';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 import { getAddressByPostalCode } from '../services/modules/address.service';
-import { createAccount, getAccountProviderBalance, getAccountStatus, updateAccountData } from '../services/modules/finance.service';
+import {
+  createAccount,
+  getAccountProviderBalance,
+  getAccountProviderFinancialTransactions,
+  getAccountStatus,
+  updateAccountData,
+} from '../services/modules/finance.service';
 import {
   hydrateDigitalAccountDraft,
   setDigitalAccountPhoneCountry,
@@ -390,6 +396,116 @@ function buildDefaultErrorMessage(message) {
   return `${message}\n\nSe o problema persistir, tente novamente mais tarde ou entre em contato com o suporte.`;
 }
 
+function formatDateToApi(value) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatTransactionDateLabel(value) {
+  if (!value) return '-';
+
+  const normalized = String(value).trim().replace(' ', 'T');
+  const parsed = new Date(normalized);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return String(value);
+  }
+
+  return parsed.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+function normalizeTransactionStatus(value = '') {
+  const normalized = String(value || '').trim().toUpperCase();
+
+  if (['RECEIVED', 'CONFIRMED', 'DONE', 'SUCCESS', 'COMPLETED'].includes(normalized)) {
+    return 'Recebido';
+  }
+
+  if (['PENDING', 'AWAITING', 'PROCESSING', 'IN_PROGRESS'].includes(normalized)) {
+    return 'Pendente';
+  }
+
+  if (['FAILED', 'ERROR', 'CANCELED', 'CANCELLED', 'REFUNDED'].includes(normalized)) {
+    return 'Nao concluido';
+  }
+
+  return value || 'Processando';
+}
+
+function normalizeTransactionDirection(item) {
+  const type = String(item?.type || item?.transactionType || item?.operationType || '').trim().toUpperCase();
+  const status = String(item?.status || '').trim().toUpperCase();
+  const amount = Number(item?.value ?? item?.amount ?? item?.netValue ?? item?.net_value ?? 0);
+
+  if (['DEBIT', 'OUT', 'OUTFLOW', 'TRANSFER_OUT', 'PAYMENT', 'CASH_OUT'].includes(type)) {
+    return 'out';
+  }
+
+  if (['CREDIT', 'IN', 'INFLOW', 'TRANSFER_IN', 'RECEIPT', 'CASH_IN'].includes(type)) {
+    return 'in';
+  }
+
+  if (['RECEIVED', 'CONFIRMED', 'DONE', 'SUCCESS', 'COMPLETED'].includes(status)) {
+    return 'in';
+  }
+
+  return amount < 0 ? 'out' : 'in';
+}
+
+function mapRecentTransactionsResponse(response) {
+  const source =
+    response?.data?.data ||
+    response?.data?.financialTransactions ||
+    response?.data?.financial_transactions ||
+    response?.financialTransactions ||
+    response?.financial_transactions ||
+    response?.data ||
+    response;
+
+  if (!Array.isArray(source)) {
+    return [];
+  }
+
+  return source.map((item, index) => ({
+    id: String(item?.id || item?.externalId || item?.transactionId || `financial-transaction-${index}`),
+    client:
+      item?.customerName ||
+      item?.clientName ||
+      item?.client_name ||
+      item?.name ||
+      item?.description ||
+      'Transacao',
+    service:
+      item?.description ||
+      item?.title ||
+      item?.transactionType ||
+      item?.type ||
+      'Movimentacao financeira',
+    amount: Math.abs(
+      Number(
+        item?.value ??
+        item?.amount ??
+        item?.netValue ??
+        item?.net_value ??
+        0
+      ) || 0
+    ),
+    status: normalizeTransactionStatus(item?.status),
+    direction: normalizeTransactionDirection(item),
+    date:
+      item?.createdAtLabel ||
+      item?.dateCreatedLabel ||
+      item?.date_label ||
+      formatTransactionDateLabel(item?.dateCreated || item?.createdAt || item?.date),
+  }));
+}
+
 const FORCED_ACCOUNT_STATUS = 'APPROVED';
 
 export default function DigitalAccountOverviewScreen({ navigation }) {
@@ -401,6 +517,7 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
     pendingBalance: 0,
     lastUpdate: 'Atualizado agora',
   });
+  const [recentTransactions, setRecentTransactions] = useState([]);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [statusError, setStatusError] = useState(null);
   const [showPhoneCountrySelect, setShowPhoneCountrySelect] = useState(false);
@@ -436,9 +553,18 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
         setStatusError(null);
 
         try {
-          const [response, balanceResponse] = await Promise.all([
+          const today = new Date();
+          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+
+          const [response, balanceResponse, transactionsResponse] = await Promise.all([
             getAccountStatus(),
             getAccountProviderBalance().catch(() => null),
+            getAccountProviderFinancialTransactions({
+              startDate: formatDateToApi(monthStart),
+              finishDate: formatDateToApi(today),
+              limit: 20,
+              order: 'desc',
+            }).catch(() => null),
           ]);
           if (isActive) {
             setAccountStatus(response);
@@ -472,6 +598,7 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
                 balanceResponse?.data?.updated_at ||
                 'Atualizado agora',
             });
+            setRecentTransactions(mapRecentTransactionsResponse(transactionsResponse).slice(0, 5));
             if (response?.has_account === false && !hydrated) {
               const initialPostalCode = applyFieldMask('postalCode', response?.account_data?.postalCode ?? '');
               let viaCepData = null;
@@ -526,6 +653,7 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
           if (!isActive) return;
           const message = err?.response?.data?.message || err?.message || 'Erro ao verificar conta digital';
           setStatusError(message);
+          setRecentTransactions([]);
         } finally {
           if (isActive) {
             setLoadingStatus(false);
@@ -589,37 +717,11 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
     }
   }, [accountStatus, lastShownAccountStatus]);
 
-  const mockAccount = useMemo(
+  const accountSummary = useMemo(
     () => ({
       availableBalance: providerBalance.availableBalance,
       pendingBalance: providerBalance.pendingBalance,
       lastUpdate: providerBalance.lastUpdate,
-      transactions: [
-        {
-          id: 'tx-1',
-          client: 'Ana Silva',
-          service: 'Limpeza completa',
-          amount: 180,
-          status: 'Recebido',
-          date: 'Hoje, 14:30',
-        },
-        {
-          id: 'tx-2',
-          client: 'Carlos Mendes',
-          service: 'Limpeza rapida',
-          amount: 120,
-          status: 'Pendente',
-          date: 'Ontem, 10:15',
-        },
-        {
-          id: 'tx-3',
-          client: 'Mariana Costa',
-          service: 'Limpeza pesada',
-          amount: 250,
-          status: 'Recebido',
-          date: '19 fev, 16:45',
-        },
-      ],
     }),
     [providerBalance]
   );
@@ -1190,17 +1292,17 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
             </Pressable>
           </View>
 
-          <Text style={styles.balanceValue}>{formatCurrency(mockAccount.availableBalance, !balanceVisible)}</Text>
+          <Text style={styles.balanceValue}>{formatCurrency(accountSummary.availableBalance, !balanceVisible)}</Text>
 
           <View style={styles.balanceMetaRow}>
             <Feather name="refresh-cw" size={12} color={colors.mutedForeground} />
-            <Text style={styles.balanceMetaText}>{mockAccount.lastUpdate}</Text>
+            <Text style={styles.balanceMetaText}>{accountSummary.lastUpdate}</Text>
           </View>
 
           <View style={styles.pendingCard}>
             <View>
               <Text style={styles.pendingLabel}>Saldo pendente</Text>
-              <Text style={styles.pendingValue}>{formatCurrency(mockAccount.pendingBalance, !balanceVisible)}</Text>
+              <Text style={styles.pendingValue}>{formatCurrency(accountSummary.pendingBalance, !balanceVisible)}</Text>
               <Text style={styles.pendingDescription}>Pagamentos aguardando confirmação</Text>
             </View>
             <Text style={styles.pendingEmoji}>⏳</Text>
@@ -1247,18 +1349,40 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
           </Pressable>
         </View>
 
-        {mockAccount.transactions.map((transaction) => {
+        {recentTransactions.length === 0 ? (
+          <AppCard style={styles.transactionCard}>
+            <Text style={styles.transactionClient}>Nenhuma transação recente</Text>
+            <Text style={styles.transactionDate}>As últimas movimentações aparecerão aqui.</Text>
+          </AppCard>
+        ) : recentTransactions.slice(0, 5).map((transaction) => {
           const isReceived = transaction.status === 'Recebido';
+          const isOutgoing = transaction.direction === 'out';
 
           return (
             <AppCard key={transaction.id} style={styles.transactionCard}>
               <View style={styles.transactionTopRow}>
                 <View style={styles.transactionInfo}>
-                  <Text style={styles.transactionClient}>{transaction.client}</Text>
-                  <Text style={styles.transactionService}>{transaction.service}</Text>
+                  <View style={styles.transactionTitleRow}>
+                    <View style={[styles.transactionDirectionIcon, isOutgoing ? styles.transactionOutIcon : styles.transactionInIcon]}>
+                      <Feather
+                        name={isOutgoing ? 'arrow-up-right' : 'arrow-down-left'}
+                        size={14}
+                        color={isOutgoing ? '#B42318' : '#027A48'}
+                      />
+                    </View>
+                    <Text style={styles.transactionClient} numberOfLines={2}>
+                      {transaction.client}
+                    </Text>
+                  </View>
+                  <Text style={styles.transactionService} numberOfLines={2}>
+                    {transaction.service}
+                  </Text>
                 </View>
                 <View style={styles.transactionRight}>
-                  <Text style={styles.transactionAmount}>{formatCurrency(transaction.amount, false)}</Text>
+                  <Text style={[styles.transactionAmount, isOutgoing ? styles.transactionAmountOut : styles.transactionAmountIn]}>
+                    {isOutgoing ? '- ' : '+ '}
+                    {formatCurrency(transaction.amount, false)}
+                  </Text>
                   <Badge text={transaction.status} tone={isReceived ? 'success' : 'default'} />
                 </View>
               </View>
@@ -1718,25 +1842,56 @@ const styles = StyleSheet.create({
   },
   transactionInfo: {
     flex: 1,
+    minWidth: 0,
+    paddingRight: 12,
+  },
+  transactionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 4,
+  },
+  transactionDirectionIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  transactionInIcon: {
+    backgroundColor: '#ECFDF3',
+  },
+  transactionOutIcon: {
+    backgroundColor: '#FEF3F2',
   },
   transactionClient: {
     color: colors.cardForeground,
     fontSize: 14,
     fontWeight: '700',
+    flex: 1,
+    flexShrink: 1,
   },
   transactionService: {
     marginTop: 3,
     color: colors.mutedForeground,
     fontSize: 12,
+    flexShrink: 1,
   },
   transactionRight: {
     alignItems: 'flex-end',
     gap: 6,
+    flexShrink: 0,
+    minWidth: 118,
   },
   transactionAmount: {
-    color: '#15803D',
     fontSize: 18,
     fontWeight: '800',
+  },
+  transactionAmountIn: {
+    color: '#15803D',
+  },
+  transactionAmountOut: {
+    color: '#B42318',
   },
   transactionDate: {
     marginTop: 10,

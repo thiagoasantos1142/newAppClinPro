@@ -40,6 +40,11 @@ export const getAccountProviderBalance = async () => {
   return data;
 };
 
+export const getAccountProviderFinancialTransactions = async (params = {}) => {
+  const { data } = await api.get('/clinpro/account/provider/transactions/financialTransactions', { params });
+  return data;
+};
+
 export const getAccountProviderPixKeys = async () => {
   const { data } = await api.get('/clinpro/account/provider/pix/addressKeys');
   return data;
@@ -47,6 +52,11 @@ export const getAccountProviderPixKeys = async () => {
 
 export const createAccountProviderPixKey = async () => {
   const { data } = await api.post('/clinpro/account/provider/pix/addressKeys');
+  return data;
+};
+
+export const deleteAccountProviderPixKey = async (id) => {
+  const { data } = await api.delete(`/clinpro/account/provider/pix/addressKeys/${id}`);
   return data;
 };
 

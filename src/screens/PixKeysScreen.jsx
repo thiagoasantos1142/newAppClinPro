@@ -1,26 +1,25 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
+import { useDispatch, useSelector } from 'react-redux';
 import AppScreenHeader from '../components/AppScreenHeader.jsx';
 import CustomErrorModal from '../components/CustomErrorModal.jsx';
 import { AppButton, AppCard } from '../components/ui.jsx';
-import { createAccountProviderPixKey, getAccountProviderPixKeys } from '../services/modules/finance.service';
+import {
+  createAccountProviderPixKey,
+  deleteAccountProviderPixKey,
+  getAccountProviderPixKeys,
+} from '../services/modules/finance.service';
+import {
+  PIX_KEYS_MAX_COUNT,
+  selectPixKeysRemainingCooldownMs,
+  selectPixKeysTotal,
+  registerPixKeyCreated,
+  setPixKeysInventory,
+} from '../store/pixKeysSlice';
 import { colors, radius, spacing, typography } from '../theme/tokens';
-
-const MAX_PIX_KEYS = 5;
-
-const initialPixKeys = [
-  { id: 'pix-1', type: 'Chave aleatoria', value: '2f11c990-4f8d-4a47-8f8c-ef21a10c39ab', status: 'Principal' },
-  { id: 'pix-2', type: 'Chave aleatoria', value: '7b32e8bf-2f7d-41cb-bf66-1c90a6ad2f10', status: 'Ativa' },
-  { id: 'pix-3', type: 'Chave aleatoria', value: '0b4d3b65-9ed5-4e9f-8f35-54a67d118021', status: 'Ativa' },
-];
-
-const mockKeySuggestions = [
-  { type: 'Chave aleatoria', value: '91d5777f-0e7b-47ce-9ed3-93ddc8091f21' },
-  { type: 'Chave aleatoria', value: '3f50990a-95ff-470e-baa3-b1d6e8d4c882' },
-  { type: 'Chave aleatoria', value: 'a8731d09-2f0e-4bc4-9776-1b1db5345a67' },
-];
 
 function KeyBadge({ text }) {
   return (
@@ -37,15 +36,44 @@ function normalizePixKeyType(value) {
     return 'Chave aleatoria';
   }
 
+  if (normalized === 'CPF') {
+    return 'CPF';
+  }
+
+  if (normalized === 'CNPJ') {
+    return 'CNPJ';
+  }
+
+  if (normalized === 'EMAIL') {
+    return 'E-mail';
+  }
+
+  if (normalized === 'PHONE') {
+    return 'Telefone';
+  }
+
   if (!normalized) {
     return 'Chave aleatoria';
   }
 
-  return 'Chave aleatoria';
+  return String(value || 'Chave Pix');
+}
+
+function normalizePixKeyStatus(item, index) {
+  if (item?.canBeDeleted === false || String(item?.status || '').toUpperCase() === 'PRIMARY') {
+    return 'Principal';
+  }
+
+  if (String(item?.status || '').toUpperCase() === 'ACTIVE') {
+    return 'Ativa';
+  }
+
+  return index === 0 ? 'Principal' : 'Ativa';
 }
 
 function mapPixKeysResponse(response) {
   const source =
+    response?.data?.data ||
     response?.data?.addressKeys ||
     response?.data?.address_keys ||
     response?.addressKeys ||
@@ -54,25 +82,42 @@ function mapPixKeysResponse(response) {
     response;
 
   if (!Array.isArray(source)) {
-    return initialPixKeys;
+    return [];
   }
 
   const mapped = source
     .map((item, index) => ({
-      id: String(item?.id || item?.addressKey || item?.address_key || item?.value || `pix-api-${index}`),
+      id: String(item?.id || item?.key || item?.addressKey || item?.address_key || item?.value || `pix-api-${index}`),
       type: normalizePixKeyType(item?.type || item?.keyType || item?.key_type),
-      value: String(item?.value || item?.addressKey || item?.address_key || '').trim(),
-      status: item?.status || item?.label || (index === 0 ? 'Principal' : 'Ativa'),
+      value: String(item?.key || item?.value || item?.addressKey || item?.address_key || '').trim(),
+      status: normalizePixKeyStatus(item, index),
+      raw: item,
     }))
     .filter((item) => item.value);
 
-  return mapped.length > 0 ? mapped : initialPixKeys;
+  return mapped;
+}
+
+function formatCooldownMessage(remainingMs) {
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  if (minutes > 0) {
+    return `Aguarde ${minutes}min${seconds > 0 ? ` ${seconds}s` : ''} para criar outra chave Pix.`;
+  }
+
+  return `Aguarde ${seconds}s para criar outra chave Pix.`;
 }
 
 export default function PixKeysScreen({ navigation }) {
-  const [pixKeys, setPixKeys] = useState(initialPixKeys);
+  const dispatch = useDispatch();
+  const [pixKeys, setPixKeys] = useState([]);
   const [loadingKeys, setLoadingKeys] = useState(true);
   const [creatingKey, setCreatingKey] = useState(false);
+  const [removingKey, setRemovingKey] = useState(false);
+  const [loadingError, setLoadingError] = useState('');
+  const [pendingRemovalIds, setPendingRemovalIds] = useState([]);
   const [feedbackModal, setFeedbackModal] = useState({
     visible: false,
     title: '',
@@ -84,10 +129,23 @@ export default function PixKeysScreen({ navigation }) {
     visible: false,
     key: null,
   });
+  const totalKeys = useSelector(selectPixKeysTotal);
+  const [cooldownTick, setCooldownTick] = useState(Date.now());
+  const remainingCooldownMs = useSelector((state) => selectPixKeysRemainingCooldownMs(state, cooldownTick));
+  const isCreationBlockedByCooldown = remainingCooldownMs > 0;
+  const isCreationBlockedByLimit = totalKeys >= PIX_KEYS_MAX_COUNT;
 
-  const nextSuggestion = useMemo(() => {
-    return mockKeySuggestions[pixKeys.length - initialPixKeys.length] || mockKeySuggestions[mockKeySuggestions.length - 1];
-  }, [pixKeys.length]);
+  React.useEffect(() => {
+    if (!isCreationBlockedByCooldown) {
+      return undefined;
+    }
+
+    const timer = setInterval(() => {
+      setCooldownTick(Date.now());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isCreationBlockedByCooldown]);
 
   const loadPixKeys = useCallback(async (options = {}) => {
     const { silent = false } = options;
@@ -97,16 +155,25 @@ export default function PixKeysScreen({ navigation }) {
     }
 
     try {
+      setLoadingError('');
       const response = await getAccountProviderPixKeys();
-      setPixKeys(mapPixKeysResponse(response));
-    } catch {
-      setPixKeys(initialPixKeys);
+      const mappedKeys = mapPixKeysResponse(response).filter((item) => !pendingRemovalIds.includes(item.id));
+      setPixKeys(mappedKeys);
+      dispatch(setPixKeysInventory(mappedKeys.length));
+    } catch (err) {
+      setPixKeys([]);
+      dispatch(setPixKeysInventory(0));
+      setLoadingError(
+        err?.response?.data?.message ||
+        err?.message ||
+        'Nao foi possivel carregar suas chaves Pix.'
+      );
     } finally {
       if (!silent) {
         setLoadingKeys(false);
       }
     }
-  }, []);
+  }, [dispatch, pendingRemovalIds]);
 
   useFocusEffect(
     useCallback(() => {
@@ -126,7 +193,7 @@ export default function PixKeysScreen({ navigation }) {
   );
 
   const handleAddKey = async () => {
-    if (pixKeys.length >= MAX_PIX_KEYS) {
+    if (isCreationBlockedByLimit) {
       setFeedbackModal({
         visible: true,
         title: 'Limite atingido',
@@ -137,10 +204,23 @@ export default function PixKeysScreen({ navigation }) {
       return;
     }
 
+    if (isCreationBlockedByCooldown) {
+      setFeedbackModal({
+        visible: true,
+        title: 'Aguarde um momento',
+        message: formatCooldownMessage(remainingCooldownMs),
+        tone: 'warning',
+        buttonLabel: 'Entendi',
+      });
+      return;
+    }
+
     try {
       setCreatingKey(true);
       const response = await createAccountProviderPixKey();
       await loadPixKeys({ silent: true });
+      dispatch(registerPixKeyCreated(Date.now()));
+      setCooldownTick(Date.now());
 
       const createdKey =
         response?.data?.addressKey ||
@@ -148,13 +228,14 @@ export default function PixKeysScreen({ navigation }) {
         response?.addressKey ||
         response?.address_key ||
         response?.data?.value ||
-        response?.value ||
-        nextSuggestion.value;
+        response?.value;
 
       setFeedbackModal({
         visible: true,
         title: 'Chave adicionada',
-        message: `Chave aleatoria criada com sucesso.\n\n${createdKey}`,
+        message: createdKey
+          ? `Chave aleatoria criada com sucesso.\n\n${createdKey}`
+          : 'Chave aleatoria criada com sucesso.',
         tone: 'info',
         buttonLabel: 'Entendi',
       });
@@ -175,11 +256,43 @@ export default function PixKeysScreen({ navigation }) {
   };
 
   const handleRemoveKey = (key) => {
+    if (key?.raw?.canBeDeleted === false) {
+      setFeedbackModal({
+        visible: true,
+        title: 'Remocao indisponivel',
+        message: key?.raw?.cannotBeDeletedReason || 'Esta chave Pix nao pode ser removida no momento.',
+        tone: 'warning',
+        buttonLabel: 'Entendi',
+      });
+      return;
+    }
+
     setRemoveModal({
       visible: true,
       key,
     });
   };
+
+  const handleCopyKey = useCallback(async (key) => {
+    try {
+      await Clipboard.setStringAsync(key.value);
+      setFeedbackModal({
+        visible: true,
+        title: 'Chave copiada',
+        message: 'A chave Pix foi copiada com sucesso.',
+        tone: 'info',
+        buttonLabel: 'Entendi',
+      });
+    } catch {
+      setFeedbackModal({
+        visible: true,
+        title: 'Erro',
+        message: 'Nao foi possivel copiar a chave Pix no momento.',
+        tone: 'danger',
+        buttonLabel: 'Entendi',
+      });
+    }
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -197,16 +310,60 @@ export default function PixKeysScreen({ navigation }) {
         title="Remover chave"
         message={removeModal.key ? `Deseja remover a chave ${removeModal.key.value}?` : ''}
         tone="warning"
-        buttonLabel="Remover"
+        buttonLabel={removingKey ? 'Removendo...' : 'Remover'}
+        buttonDisabled={removingKey}
         secondaryButtonLabel="Cancelar"
-        onSecondaryPress={() => setRemoveModal({ visible: false, key: null })}
-        onButtonPress={() => {
-          if (removeModal.key) {
-            setPixKeys((current) => current.filter((item) => item.id !== removeModal.key.id));
+        onSecondaryPress={() => {
+          if (!removingKey) {
+            setRemoveModal({ visible: false, key: null });
           }
-          setRemoveModal({ visible: false, key: null });
         }}
-        onClose={() => setRemoveModal({ visible: false, key: null })}
+        onButtonPress={async () => {
+          if (!removeModal.key || removingKey) {
+            return;
+          }
+
+          try {
+            setRemovingKey(true);
+            const removedKeyId = removeModal.key.id;
+            await deleteAccountProviderPixKey(removedKeyId);
+            setPendingRemovalIds((current) => (
+              current.includes(removedKeyId) ? current : [...current, removedKeyId]
+            ));
+            const nextKeys = pixKeys.filter((item) => item.id !== removedKeyId);
+            setPixKeys(nextKeys);
+            dispatch(setPixKeysInventory(nextKeys.length));
+            setRemoveModal({ visible: false, key: null });
+            setFeedbackModal({
+              visible: true,
+              title: 'Chave removida',
+              message: 'A chave Pix foi removida com sucesso.',
+              tone: 'info',
+              buttonLabel: 'Entendi',
+            });
+            setTimeout(() => {
+              setPendingRemovalIds((current) => current.filter((id) => id !== removedKeyId));
+            }, 15000);
+          } catch (err) {
+            setFeedbackModal({
+              visible: true,
+              title: 'Erro',
+              message:
+                err?.response?.data?.message ||
+                err?.message ||
+                'Nao foi possivel remover a chave Pix no momento.',
+              tone: 'danger',
+              buttonLabel: 'Entendi',
+            });
+          } finally {
+            setRemovingKey(false);
+          }
+        }}
+        onClose={() => {
+          if (!removingKey) {
+            setRemoveModal({ visible: false, key: null });
+          }
+        }}
       />
 
       <AppScreenHeader
@@ -228,7 +385,7 @@ export default function PixKeysScreen({ navigation }) {
 
         <AppCard style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>Resumo</Text>
-          <Text style={styles.summaryValue}>{loadingKeys ? '--' : pixKeys.length} chave(s) cadastrada(s)</Text>
+          <Text style={styles.summaryValue}>{loadingKeys ? '--' : totalKeys} chave(s) cadastrada(s)</Text>
           <Text style={styles.summaryDescription}>Você pode adicionar novas chaves ou remover as que não usa mais.</Text>
         </AppCard>
 
@@ -236,15 +393,21 @@ export default function PixKeysScreen({ navigation }) {
           title={
             creatingKey
               ? 'Criando chave...'
-              : pixKeys.length >= MAX_PIX_KEYS
+              : isCreationBlockedByLimit
                 ? 'Limite de chaves atingido'
+                : isCreationBlockedByCooldown
+                  ? 'Aguarde para criar outra chave'
                 : 'Adicionar nova chave'
           }
           onPress={handleAddKey}
-          disabled={pixKeys.length >= MAX_PIX_KEYS || creatingKey}
+          disabled={isCreationBlockedByLimit || isCreationBlockedByCooldown || creatingKey}
           left={<Feather name="plus" size={16} color="#FFFFFF" />}
           style={styles.addButton}
         />
+
+        {isCreationBlockedByCooldown ? (
+          <Text style={styles.cooldownText}>{formatCooldownMessage(remainingCooldownMs)}</Text>
+        ) : null}
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Lista de chaves</Text>
@@ -255,6 +418,23 @@ export default function PixKeysScreen({ navigation }) {
             <ActivityIndicator size="small" color={colors.primary} />
             <Text style={styles.loadingText}>Carregando suas chaves Pix...</Text>
           </View>
+        ) : null}
+
+        {!loadingKeys && loadingError ? (
+          <AppCard style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>Nao foi possivel carregar</Text>
+            <Text style={styles.emptyDescription}>{loadingError}</Text>
+            <AppButton title="Tentar novamente" onPress={() => loadPixKeys()} style={styles.retryButton} />
+          </AppCard>
+        ) : null}
+
+        {!loadingKeys && !loadingError && pixKeys.length === 0 ? (
+          <AppCard style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>Nenhuma chave Pix cadastrada</Text>
+            <Text style={styles.emptyDescription}>
+              Quando voce criar sua primeira chave, ela aparecera aqui.
+            </Text>
+          </AppCard>
         ) : null}
 
         {!loadingKeys ? pixKeys.map((key) => (
@@ -273,7 +453,10 @@ export default function PixKeysScreen({ navigation }) {
             </View>
 
             <View style={styles.keyActionsRow}>
-              <Pressable style={({ pressed }) => [styles.keyActionButton, pressed && styles.keyActionPressed]}>
+              <Pressable
+                onPress={() => handleCopyKey(key)}
+                style={({ pressed }) => [styles.keyActionButton, pressed && styles.keyActionPressed]}
+              >
                 <Feather name="copy" size={16} color={colors.primary} />
                 <Text style={styles.keyActionText}>Copiar</Text>
               </Pressable>
@@ -356,6 +539,13 @@ const styles = StyleSheet.create({
   addButton: {
     marginBottom: spacing.lg,
   },
+  cooldownText: {
+    marginTop: -6,
+    marginBottom: spacing.lg,
+    color: colors.warning,
+    fontSize: typography.fontSize.sm,
+    fontWeight: '700',
+  },
   sectionHeader: {
     marginBottom: 12,
   },
@@ -374,6 +564,25 @@ const styles = StyleSheet.create({
     color: colors.mutedForeground,
     fontSize: 13,
     fontWeight: '600',
+  },
+  emptyCard: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 14,
+  },
+  emptyTitle: {
+    color: colors.cardForeground,
+    fontSize: typography.fontSize.md,
+    fontWeight: '800',
+  },
+  emptyDescription: {
+    marginTop: spacing.sm,
+    color: colors.mutedForeground,
+    fontSize: typography.fontSize.sm,
+    lineHeight: 20,
+  },
+  retryButton: {
+    marginTop: spacing.lg,
   },
   keyCard: {
     borderWidth: 1,

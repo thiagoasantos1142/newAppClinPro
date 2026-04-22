@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { AppButton, AppCard } from '../../components/ui.jsx';
+import CustomErrorModal from '../../components/CustomErrorModal.jsx';
 import { colors, radius, spacing, typography } from '../../theme/tokens.js';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -8,7 +9,9 @@ export default function PhoneLoginScreen({ navigation }) {
   const { requestOtp } = useAuth();
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [errorModalMessage, setErrorModalMessage] = useState('');
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const genericErrorMessage = 'Estamos com uma instabilidade no servidor. Tente novamente mais tarde.';
 
   const formatPhoneNumber = (value) => {
     const digits = value.replace(/\D/g, '');
@@ -30,7 +33,8 @@ export default function PhoneLoginScreen({ navigation }) {
     if (cleanPhone.length < 10) return;
     try {
       setLoading(true);
-      setError(null);
+      setErrorModalVisible(false);
+      setErrorModalMessage('');
       const phoneToSend = cleanPhone;
       console.log('[DEBUG] requestOtp payload:', phoneToSend);
       await requestOtp(phoneToSend);
@@ -41,15 +45,16 @@ export default function PhoneLoginScreen({ navigation }) {
           status: err.response.status,
           data: err.response.data,
         });
-        setError(
-          err.response.data?.detail ||
-          err.response.data?.message ||
-          err.message || 'Erro ao solicitar o código'
-        );
+        if (err.response.data?.gateway_error === true) {
+          navigation.navigate('OtpVerification', { phone: cleanPhone });
+          return;
+        }
+        setErrorModalMessage(genericErrorMessage);
       } else {
         console.log('[DEBUG] requestOtp error:', err);
-        setError(err?.message || 'Erro ao solicitar o código');
+        setErrorModalMessage(genericErrorMessage);
       }
+      setErrorModalVisible(true);
     } finally {
       setLoading(false);
     }
@@ -118,7 +123,6 @@ export default function PhoneLoginScreen({ navigation }) {
             />
             <Text style={styles.helperText}>Enviaremos um código de 6 dígitos</Text>
           </View>
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <AppButton
             title={loading ? 'Enviando...' : 'Continuar'}
             onPress={handlePhoneSubmit}
@@ -139,6 +143,11 @@ export default function PhoneLoginScreen({ navigation }) {
           <Text style={styles.link}>Política de Privacidade</Text>
         </Text>
       </View>
+      <CustomErrorModal
+        visible={errorModalVisible}
+        message={errorModalMessage}
+        onClose={() => setErrorModalVisible(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -211,11 +220,6 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xs,
     color: colors.mutedForeground,
     marginTop: spacing.xs,
-  },
-  errorText: {
-    color: colors.danger,
-    fontSize: typography.fontSize.sm,
-    marginBottom: spacing.sm,
   },
   securityBox: {
     marginTop: spacing.lg,

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { AppButton, AppCard } from '../../components/ui.jsx';
+import CustomErrorModal from '../../components/CustomErrorModal.jsx';
 import { colors, radius, spacing, typography } from '../../theme/tokens.js';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -8,11 +9,14 @@ export default function OtpVerificationScreen({ navigation, route }) {
   const { verifyOtp, isAuthenticated } = useAuth();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [errorModalMessage, setErrorModalMessage] = useState('');
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const genericErrorMessage = 'Estamos com uma instabilidade no servidor. Tente novamente mais tarde.';
 
   useEffect(() => {
     if (isAuthenticated) {
-      setError(null);
+      setErrorModalVisible(false);
+      setErrorModalMessage('');
       navigation.navigate('OnboardingWelcome');
     }
   }, [isAuthenticated]);
@@ -56,10 +60,12 @@ export default function OtpVerificationScreen({ navigation, route }) {
     if (code.length === 6) {
       try {
         setLoading(true);
-        setError(null);
+        setErrorModalVisible(false);
+        setErrorModalMessage('');
         await verifyOtp(route.params.phone, code);
       } catch (err) {
-        setError(err?.message || 'Erro ao verificar o código');
+        setErrorModalMessage(genericErrorMessage);
+        setErrorModalVisible(true);
       } finally {
         setLoading(false);
       }
@@ -134,7 +140,6 @@ export default function OtpVerificationScreen({ navigation, route }) {
               />
             ))}
           </View>
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <AppButton
             title={loading ? 'Entrando...' : 'Entrar'}
             onPress={handleSubmit}
@@ -153,6 +158,11 @@ export default function OtpVerificationScreen({ navigation, route }) {
           />
         </AppCard>
       </View>
+      <CustomErrorModal
+        visible={errorModalVisible}
+        message={errorModalMessage}
+        onClose={() => setErrorModalVisible(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -216,11 +226,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.foreground,
     marginHorizontal: 2,
-  },
-  errorText: {
-    color: colors.danger,
-    fontSize: typography.fontSize.sm,
-    marginBottom: spacing.sm,
-    textAlign: 'center',
   },
 });
