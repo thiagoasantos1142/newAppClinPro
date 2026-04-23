@@ -21,6 +21,7 @@ const initialState = {
   currentStep: 0,
   selectedPhoneCountryCode: 'BR',
   hydrated: false,
+  accessUnlockedAt: null,
 };
 
 const digitalAccountSlice = createSlice({
@@ -47,6 +48,12 @@ const digitalAccountSlice = createSlice({
     setDigitalAccountPhoneCountry(state, action) {
       state.selectedPhoneCountryCode = action.payload || 'BR';
     },
+    grantDigitalAccountAccess(state, action) {
+      state.accessUnlockedAt = Number(action.payload) || Date.now();
+    },
+    clearDigitalAccountAccess(state) {
+      state.accessUnlockedAt = null;
+    },
     resetDigitalAccountDraft() {
       return initialState;
     },
@@ -58,6 +65,8 @@ export const {
   updateDigitalAccountField,
   setDigitalAccountStep,
   setDigitalAccountPhoneCountry,
+  grantDigitalAccountAccess,
+  clearDigitalAccountAccess,
   resetDigitalAccountDraft,
 } = digitalAccountSlice.actions;
 

@@ -1,9 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { AppButton, AppCard } from '../../components/ui.jsx';
 import CustomErrorModal from '../../components/CustomErrorModal.jsx';
 import { colors, radius, spacing, typography } from '../../theme/tokens.js';
 import { useAuth } from '../../hooks/useAuth';
+import {
+  VERIFY_OTP_ROUTE_ID_KEY,
+  VERIFY_OTP_ROUTE_ID_VALUE,
+} from '../../constants/secureStorage';
 
 export default function OtpVerificationScreen({ navigation, route }) {
   const { verifyOtp, isAuthenticated } = useAuth();
@@ -19,7 +24,25 @@ export default function OtpVerificationScreen({ navigation, route }) {
       setErrorModalMessage('');
       navigation.navigate('OnboardingWelcome');
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, navigation]);
+
+  useEffect(() => {
+    const routeName = route?.name;
+
+    if (routeName !== 'OtpVerification' && routeName !== 'verify-otp') {
+      return;
+    }
+
+    const persistVerifyOtpRouteId = async () => {
+      try {
+        await SecureStore.setItemAsync(VERIFY_OTP_ROUTE_ID_KEY, VERIFY_OTP_ROUTE_ID_VALUE);
+      } catch (err) {
+        console.error('[OtpVerificationScreen] erro ao salvar identificador da rota verify-otp', err);
+      }
+    };
+
+    void persistVerifyOtpRouteId();
+  }, [route?.name]);
 
   const handleOtpChange = (index, value) => {
     if (!/^\d*$/.test(value)) return;

@@ -37,7 +37,7 @@ import FinancialDashboardScreen from '../screens/FinancialDashboardScreen.jsx';
 import TransactionsListScreen from '../screens/TransactionsListScreen.jsx';
 import PaymentDetailScreen from '../screens/PaymentDetailScreen.jsx';
 import MEIControlScreen from '../screens/MEIControlScreen.jsx';
-import DigitalAccountOverviewScreen from '../screens/DigitalAccountOverviewScreen.jsx';
+import DigitalAccountEntryScreen from '../screens/DigitalAccountEntryScreen.jsx';
 import PixAreaScreen from '../screens/PixAreaScreen.jsx';
 import PixKeysScreen from '../screens/PixKeysScreen.jsx';
 import TransactionHistoryScreen from '../screens/TransactionHistoryScreen.jsx';
@@ -142,7 +142,7 @@ function AppStack() {
       <Stack.Screen name="Transactions" component={TransactionsListScreen} />
       <Stack.Screen name="PaymentDetail" component={PaymentDetailScreen} />
       <Stack.Screen name="MEIControl" component={MEIControlScreen} />
-      <Stack.Screen name="DigitalAccountOverview" component={DigitalAccountOverviewScreen} />
+      <Stack.Screen name="DigitalAccountOverview" component={DigitalAccountEntryScreen} />
       <Stack.Screen name="PixArea" component={PixAreaScreen} />
       <Stack.Screen name="PixKeys" component={PixKeysScreen} />
       <Stack.Screen name="TransactionHistory" component={TransactionHistoryScreen} />

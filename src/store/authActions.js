@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { clearAuthSession, setAuthLoading, setAuthSession } from './authSlice';
+import { resetDigitalAccountDraft } from './digitalAccountSlice';
 import { resetOnboardingState } from './onboardingSlice';
 import {
   logoutAuth as logoutAuthApi,
@@ -8,9 +9,11 @@ import {
   verifyOtp as verifyOtpApi,
 } from '../services/modules/auth.service';
 import { setAuthToken } from '../services/api';
-
-const AUTH_TOKEN_KEY = 'authToken';
-const AUTH_REFRESH_TOKEN_KEY = 'authRefreshToken';
+import {
+  AUTH_REFRESH_TOKEN_KEY,
+  AUTH_TOKEN_KEY,
+  VERIFY_OTP_ROUTE_ID_KEY,
+} from '../constants/secureStorage';
 
 export const initializeAuth = () => async (dispatch) => {
   dispatch(setAuthLoading(true));
@@ -91,8 +94,10 @@ export const logout = () => async (dispatch, getState) => {
   await Promise.all([
     SecureStore.deleteItemAsync(AUTH_TOKEN_KEY),
     SecureStore.deleteItemAsync(AUTH_REFRESH_TOKEN_KEY),
+    SecureStore.deleteItemAsync(VERIFY_OTP_ROUTE_ID_KEY),
   ]);
   setAuthToken(null);
+  dispatch(resetDigitalAccountDraft());
   dispatch(resetOnboardingState());
   dispatch(clearAuthSession());
 };

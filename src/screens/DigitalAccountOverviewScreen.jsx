@@ -902,7 +902,7 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
     try {
       if (isLastStep) {
         await createAccount();
-        navigation.replace('DigitalAccountOverview');
+        navigation.replace('DigitalAccountOverview', { skipPin: true });
       } else {
         const payload = buildAccountDataPayload(accountForm, stepPayloadFields[currentStep] || []);
         await updateAccountData(payload);

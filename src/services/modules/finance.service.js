@@ -84,3 +84,13 @@ export const activateAccount = async (payload = { confirm: true }) => {
   const { data } = await api.post('/clinpro/account/activate', payload);
   return data;
 };
+
+export const savePagClinPassword = async (payload) => {
+  const { data } = await api.post('/clinpro/account/pagClin/password', payload);
+  return data;
+};
+
+export const validatePagClinPassword = async (payload) => {
+  const { data } = await api.post('/clinpro/account/pagClin/password/validate', payload);
+  return data;
+};
