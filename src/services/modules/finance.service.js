@@ -75,6 +75,47 @@ export const createAccountTransfer = async (payload) => {
   return data;
 };
 
+export const identifyPixKeyType = (pixKey = '') => {
+  const value = String(pixKey).trim();
+  const digits = value.replace(/\D/g, '');
+
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    return 'EMAIL';
+  }
+
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    return 'EVP';
+  }
+
+  if (digits.length === 14) {
+    return 'CNPJ';
+  }
+
+  if (digits.length === 11 && !value.startsWith('+')) {
+    return 'CPF';
+  }
+
+  if (value.startsWith('+') || digits.length === 10 || (digits.length === 13 && digits.startsWith('55'))) {
+    return 'PHONE';
+  }
+
+  return 'EVP';
+};
+
+export const verifyAccountTransferPixKey = async (pixKey) => {
+  const normalizedPixKey = String(pixKey || '').trim();
+  const { data } = await api.post('/clinpro/account/provider/transactions/pix-key/consult', {
+    pix_key: normalizedPixKey,
+    pix_key_type: identifyPixKeyType(normalizedPixKey),
+  });
+  return data;
+};
+
+export const sendAccountProviderPixTransfer = async (payload) => {
+  const { data } = await api.post('/clinpro/account/provider/transactions/pix/send', payload);
+  return data;
+};
+
 export const getAccountDetails = async () => {
   const { data } = await api.get('/clinpro/account/details');
   return data;

@@ -21,6 +21,7 @@ import {
   hydrateDigitalAccountDraft,
   setDigitalAccountPhoneCountry,
   setDigitalAccountStep,
+  setDigitalAccountProviderBalance,
   updateDigitalAccountField,
 } from '../store/digitalAccountSlice';
 
@@ -567,10 +568,7 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
             }).catch(() => null),
           ]);
           if (isActive) {
-            setAccountStatus(response);
-            setShowPhoneCountrySelect(false);
-            setPostalCodeLookupError(null);
-            setProviderBalance({
+            const normalizedProviderBalance = {
               availableBalance: Number(
                 balanceResponse?.availableBalance ??
                   balanceResponse?.available_balance ??
@@ -597,7 +595,13 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
                 balanceResponse?.data?.lastUpdate ||
                 balanceResponse?.data?.updated_at ||
                 'Atualizado agora',
-            });
+            };
+
+            setAccountStatus(response);
+            setShowPhoneCountrySelect(false);
+            setPostalCodeLookupError(null);
+            setProviderBalance(normalizedProviderBalance);
+            dispatch(setDigitalAccountProviderBalance(normalizedProviderBalance));
             setRecentTransactions(mapRecentTransactionsResponse(transactionsResponse).slice(0, 5));
             if (response?.has_account === false && !hydrated) {
               const initialPostalCode = applyFieldMask('postalCode', response?.account_data?.postalCode ?? '');

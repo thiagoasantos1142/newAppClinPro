@@ -12,8 +12,22 @@ import { setAuthToken } from '../services/api';
 import {
   AUTH_REFRESH_TOKEN_KEY,
   AUTH_TOKEN_KEY,
+  AUTH_UUID_KEY,
   VERIFY_OTP_ROUTE_ID_KEY,
 } from '../constants/secureStorage';
+
+const getAuthUuidFromResponse = (response) => (
+  response?.uuid ||
+  response?.user?.uuid ||
+  response?.user?.user_uuid ||
+  response?.user?.device_uuid ||
+  response?.user?.id ||
+  response?.data?.uuid ||
+  response?.data?.user?.uuid ||
+  response?.data?.user?.user_uuid ||
+  response?.data?.user?.device_uuid ||
+  null
+);
 
 export const initializeAuth = () => async (dispatch) => {
   dispatch(setAuthLoading(true));
@@ -43,6 +57,10 @@ export const verifyOtp = (phone, code) => async (dispatch) => {
   if (response.refresh_token) {
     await SecureStore.setItemAsync(AUTH_REFRESH_TOKEN_KEY, response.refresh_token);
   }
+  const authUuid = getAuthUuidFromResponse(response);
+  if (authUuid) {
+    await SecureStore.setItemAsync(AUTH_UUID_KEY, String(authUuid));
+  }
   setAuthToken(response.token);
   dispatch(
     setAuthSession({
@@ -66,6 +84,10 @@ export const refreshSession = () => async (dispatch, getState) => {
   await SecureStore.setItemAsync(AUTH_TOKEN_KEY, response.token);
   if (response.refresh_token) {
     await SecureStore.setItemAsync(AUTH_REFRESH_TOKEN_KEY, response.refresh_token);
+  }
+  const authUuid = getAuthUuidFromResponse(response);
+  if (authUuid) {
+    await SecureStore.setItemAsync(AUTH_UUID_KEY, String(authUuid));
   }
   setAuthToken(response.token);
   dispatch(
@@ -94,6 +116,7 @@ export const logout = () => async (dispatch, getState) => {
   await Promise.all([
     SecureStore.deleteItemAsync(AUTH_TOKEN_KEY),
     SecureStore.deleteItemAsync(AUTH_REFRESH_TOKEN_KEY),
+    SecureStore.deleteItemAsync(AUTH_UUID_KEY),
     SecureStore.deleteItemAsync(VERIFY_OTP_ROUTE_ID_KEY),
   ]);
   setAuthToken(null);

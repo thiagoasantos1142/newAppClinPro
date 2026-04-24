@@ -22,6 +22,12 @@ const initialState = {
   selectedPhoneCountryCode: 'BR',
   hydrated: false,
   accessUnlockedAt: null,
+  providerBalance: {
+    availableBalance: null,
+    pendingBalance: null,
+    lastUpdate: null,
+    loadedAt: null,
+  },
 };
 
 const digitalAccountSlice = createSlice({
@@ -54,6 +60,15 @@ const digitalAccountSlice = createSlice({
     clearDigitalAccountAccess(state) {
       state.accessUnlockedAt = null;
     },
+    setDigitalAccountProviderBalance(state, action) {
+      const payload = action.payload || {};
+      state.providerBalance = {
+        availableBalance: Number(payload.availableBalance ?? 0),
+        pendingBalance: Number(payload.pendingBalance ?? 0),
+        lastUpdate: payload.lastUpdate || 'Atualizado agora',
+        loadedAt: payload.loadedAt || Date.now(),
+      };
+    },
     resetDigitalAccountDraft() {
       return initialState;
     },
@@ -67,7 +82,10 @@ export const {
   setDigitalAccountPhoneCountry,
   grantDigitalAccountAccess,
   clearDigitalAccountAccess,
+  setDigitalAccountProviderBalance,
   resetDigitalAccountDraft,
 } = digitalAccountSlice.actions;
+
+export const selectDigitalAccountProviderBalance = (state) => state.digitalAccount?.providerBalance || initialState.providerBalance;
 
 export default digitalAccountSlice.reducer;

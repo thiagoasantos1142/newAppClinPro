@@ -42,6 +42,10 @@ import PixAreaScreen from '../screens/PixAreaScreen.jsx';
 import PixKeysScreen from '../screens/PixKeysScreen.jsx';
 import TransactionHistoryScreen from '../screens/TransactionHistoryScreen.jsx';
 import TransferMoneyScreen from '../screens/TransferMoneyScreen.jsx';
+import TransferRecipientScreen from '../screens/TransferRecipientScreen.jsx';
+import TransferAmountScreen from '../screens/TransferAmountScreen.jsx';
+import TransferCheckoutScreen from '../screens/TransferCheckoutScreen.jsx';
+import TransferPixResultScreen from '../screens/TransferPixResultScreen.jsx';
 import AccountDetailsScreen from '../screens/AccountDetailsScreen.jsx';
 import AccountActivationScreen from '../screens/AccountActivationScreen.jsx';
 import PersonalDataScreen from '../screens/PersonalDataScreen.jsx';
@@ -147,6 +151,10 @@ function AppStack() {
       <Stack.Screen name="PixKeys" component={PixKeysScreen} />
       <Stack.Screen name="TransactionHistory" component={TransactionHistoryScreen} />
       <Stack.Screen name="TransferMoney" component={TransferMoneyScreen} />
+      <Stack.Screen name="TransferRecipient" component={TransferRecipientScreen} />
+      <Stack.Screen name="TransferAmount" component={TransferAmountScreen} />
+      <Stack.Screen name="TransferCheckout" component={TransferCheckoutScreen} />
+      <Stack.Screen name="TransferPixResult" component={TransferPixResultScreen} />
       <Stack.Screen name="AccountDetails" component={AccountDetailsScreen} />
       <Stack.Screen name="AccountActivation" component={AccountActivationScreen} />
       <Stack.Screen name="PersonalData" component={PersonalDataScreen} />
