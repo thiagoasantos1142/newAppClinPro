@@ -60,10 +60,9 @@ import QuestionsGoalScreen from '../screens/QuestionsGoalScreen';
 import QuestionsMEIScreen from '../screens/QuestionsMEIScreen';
 import QuestionsTransitionScreen from '../screens/QuestionsTransitionScreen';
 import OnboardingProfileScreen from '../screens/OnboardingProfileScreen.jsx';
+import OnboardingSelectDayOfWeekScreen from '../screens/OnboardingSelectDayOfWeekScreen.jsx';
 import OnboardingFirstActionScreen from '../screens/OnboardingFirstActionScreen.jsx';
-import OnboardingAccountIntroScreen from '../screens/OnboardingAccountIntroScreen.jsx';
 import OnboardingKYCScreen from '../screens/OnboardingKYCScreen.jsx';
-import OnboardingFirstGoalScreen from '../screens/OnboardingFirstGoalScreen.jsx';
 import OnboardingTutorialScreen from '../screens/OnboardingTutorialScreen.jsx';
 import AppStructureScreen from '../screens/AppStructureScreen.jsx';
 import NavigationGuideScreen from '../screens/NavigationGuideScreen.jsx';
@@ -164,10 +163,9 @@ function AppStack() {
       <Stack.Screen name="ProfessionalScore" component={ProfessionalScoreScreen} />
       <Stack.Screen name="OnboardingWelcome" component={OnboardingWelcomeScreen} />
       <Stack.Screen name="OnboardingProfile" component={OnboardingProfileScreen} />
+      <Stack.Screen name="OnboardingSelectDayOfWeek" component={OnboardingSelectDayOfWeekScreen} />
       <Stack.Screen name="OnboardingFirstAction" component={OnboardingFirstActionScreen} />
-      <Stack.Screen name="OnboardingAccountIntro" component={OnboardingAccountIntroScreen} />
       <Stack.Screen name="OnboardingKYC" component={OnboardingKYCScreen} />
-      <Stack.Screen name="OnboardingFirstGoal" component={OnboardingFirstGoalScreen} />
       <Stack.Screen name="OnboardingTutorial" component={OnboardingTutorialScreen} />
       <Stack.Screen name="AppStructure" component={AppStructureScreen} />
       <Stack.Screen name="NavigationGuide" component={NavigationGuideScreen} />
@@ -193,10 +191,9 @@ function OnboardingFlow({ initialRouteName }) {
       <Stack.Screen name="QuestionsMEI" component={QuestionsMEIScreen} />
       <Stack.Screen name="QuestionsTransition" component={QuestionsTransitionScreen} />
       <Stack.Screen name="OnboardingProfile" component={OnboardingProfileScreen} />
+      <Stack.Screen name="OnboardingSelectDayOfWeek" component={OnboardingSelectDayOfWeekScreen} />
       <Stack.Screen name="OnboardingFirstAction" component={OnboardingFirstActionScreen} />
-      <Stack.Screen name="OnboardingAccountIntro" component={OnboardingAccountIntroScreen} />
       <Stack.Screen name="OnboardingKYC" component={OnboardingKYCScreen} />
-      <Stack.Screen name="OnboardingFirstGoal" component={OnboardingFirstGoalScreen} />
       <Stack.Screen name="OnboardingTutorial" component={OnboardingTutorialScreen} />
     </Stack.Navigator>
   );

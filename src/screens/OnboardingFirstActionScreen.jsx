@@ -17,9 +17,8 @@ export default function OnboardingFirstActionScreen({ navigation }) {
         },
       ]}
       actions={[
-        { label: 'Ativar disponibilidade', route: 'WeeklySchedule', icon: 'calendar', disabled: loading || !status },
         { label: 'Ver oportunidades na sua regiao', route: 'AvailableServicesImproved', icon: 'map-pin', disabled: loading || !status },
-        { label: 'Continuar onboarding', route: 'OnboardingAccountIntro', variant: 'secondary', icon: 'arrow-right', disabled: loading || !status },
+        { label: 'Continuar onboarding', route: 'OnboardingKYC', variant: 'secondary', icon: 'arrow-right', disabled: loading || !status },
       ]}
     />
   );

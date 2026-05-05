@@ -13,7 +13,7 @@ export default function OnboardingAccountIntroScreen({ navigation }) {
         return;
       }
       await completeStep('account_intro', { understood: true, accept_terms: true });
-      navigation.navigate('OnboardingKYC');
+      navigation.navigate('OnboardingFirstGoal');
     } catch (err) {
       const message = err?.response?.data?.message || err?.message || 'Não foi possível concluir esta etapa.';
       Alert.alert('Erro', message);

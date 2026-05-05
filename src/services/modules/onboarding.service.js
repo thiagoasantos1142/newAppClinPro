@@ -26,26 +26,100 @@ const buildQuestionsPayload = (answers = {}) => ({
 });
 
 const buildProfilePayload = (answers = {}) => ({
-  name: answers.name || '',
   bio: answers.bio || '',
+  region: answers.region || answers.service_region || '',
+  cep: answers.cep || answers.zip || '',
   experience_years: Number.isFinite(answers.experience_years)
     ? answers.experience_years
     : Number.isFinite(answers.experienceYears)
       ? answers.experienceYears
       : 0,
-  specialties: Array.isArray(answers.specialties)
-    ? answers.specialties
-    : Array.isArray(answers.services)
-      ? answers.services
-      : [],
-  service_region: answers.service_region || answers.region || '',
+  profile_photo: answers.profile_photo || answers.profile_photo_url || answers.photo_url || answers.image_url || '',
 });
 
-const buildGoalPayload = (answers = {}) => ({
-  goal_type: answers.goal_type || 'services_count',
-  target_value: Number(answers.target_value ?? answers.targetValue ?? 10) || 10,
-  period: answers.period || 'first_month',
-});
+const getImageMimeType = (asset = {}) => {
+  if (asset.mimeType) return asset.mimeType;
+
+  const uri = asset.uri || '';
+  const extension = uri.split('?')[0].split('.').pop()?.toLowerCase();
+
+  if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg';
+  if (extension === 'png') return 'image/png';
+  if (extension === 'webp') return 'image/webp';
+
+  return 'image/jpeg';
+};
+
+const getImageFileName = (asset = {}) => {
+  if (asset.fileName) return asset.fileName;
+
+  const mimeType = getImageMimeType(asset);
+  const extensionByMime = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+  };
+  const extension = extensionByMime[mimeType] || 'jpg';
+
+  return `profile-photo.${extension}`;
+};
+
+const buildSelectDayOfWeekPayload = (answers = {}) => {
+  const availabilityDays = Array.isArray(answers.availability_days)
+    ? answers.availability_days
+    : Array.isArray(answers.selected_days)
+      ? answers.selected_days
+      : [];
+
+  return {
+    availability_days: availabilityDays,
+    availability_label:
+      answers.availability_label ||
+      (availabilityDays.length
+        ? `${availabilityDays.length} dia${availabilityDays.length > 1 ? 's' : ''} por semana`
+        : 'Disponibilidade variável'),
+  };
+};
+
+export const uploadOnboardingImage = async (asset) => {
+  const formData = new FormData();
+  formData.append('image', {
+    uri: asset.uri,
+    name: getImageFileName(asset),
+    type: getImageMimeType(asset),
+  });
+
+  const { data } = await api.post('/clinpro/onboarding/upload/image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+
+  return unwrapResponse(data);
+};
+
+export const uploadOnboardingDocument = async (asset, documentType) => {
+  const formData = new FormData();
+  formData.append('document_type', documentType);
+  formData.append('image', {
+    uri: asset.uri,
+    name: getImageFileName(asset),
+    type: getImageMimeType(asset),
+  });
+
+  const { data } = await api.post('/clinpro/onboarding/upload/documents', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+
+  return unwrapResponse(data);
+};
+
+export const saveOnboardingDocuments = async (payload) => {
+  const { data } = await api.post('/clinpro/onboarding/documents', payload);
+  return unwrapResponse(data);
+};
 
 export const completeOnboardingStep = async (step, answers) => {
   try {
@@ -61,8 +135,8 @@ export const completeOnboardingStep = async (step, answers) => {
       return normalizeCompletionResponse(response.data);
     }
 
-    if (step === 'account_intro') {
-      response = await api.post('/clinpro/onboarding/account-intro/complete', { acknowledged: true });
+    if (step === 'select_day_of_week') {
+      response = await api.post('/clinpro/onboarding/select-day-of-week', buildSelectDayOfWeekPayload(answers));
       return normalizeCompletionResponse(response.data);
     }
 
@@ -70,11 +144,6 @@ export const completeOnboardingStep = async (step, answers) => {
       response = await api.post('/clinpro/onboarding/kyc', {
         document_upload_ids: Array.isArray(answers?.document_upload_ids) ? answers.document_upload_ids : [],
       });
-      return normalizeCompletionResponse(response.data);
-    }
-
-    if (step === 'goal') {
-      response = await api.post('/clinpro/onboarding/goal', buildGoalPayload(answers));
       return normalizeCompletionResponse(response.data);
     }
 

@@ -1,7 +1,9 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,12 +14,14 @@ import {
   View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import HeaderActionButton from '../components/HeaderActionButton.jsx';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '../components/ui.jsx';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { useQuestionsFlow } from '../hooks/useQuestionsFlow';
+import { uploadOnboardingImage } from '../services/modules/onboarding.service';
 
 export default function OnboardingProfileScreen({ navigation }) {
   const { status, completeStep, saving } = useOnboarding();
@@ -26,22 +30,45 @@ export default function OnboardingProfileScreen({ navigation }) {
   const scrollRef = useRef(null);
 
   const [name, setName] = useState('');
-  const [hasPhoto, setHasPhoto] = useState(false);
+  const [photoUri, setPhotoUri] = useState(null);
+  const [uploadedPhoto, setUploadedPhoto] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState(null);
   const [selectedRegion, setSelectedRegion] = useState('');
+  const [cep, setCep] = useState('');
   const [selectedServices, setSelectedServices] = useState([]);
   const [bio, setBio] = useState('');
   const [showRegionDropdown, setShowRegionDropdown] = useState(false);
+  const hasPhoto = Boolean(uploadedPhoto?.url);
 
   const regions = [
-    'São Paulo - Zona Sul',
-    'São Paulo - Zona Norte',
-    'São Paulo - Zona Leste',
-    'São Paulo - Zona Oeste',
-    'São Paulo - Centro',
+    'Acre',
+    'Alagoas',
+    'Amazonas',
+    'Amapá',
+    'Bahia',
+    'Ceará',
+    'Distrito Federal',
+    'Espírito Santo',
+    'Goiás',
+    'Maranhão',
+    'Minas Gerais',
+    'Mato Grosso do Sul',
+    'Mato Grosso',
+    'Pará',
+    'Paraíba',
+    'Pernambuco',
+    'Piauí',
+    'Paraná',
     'Rio de Janeiro',
-    'Belo Horizonte',
-    'Brasília',
-    'Outra região',
+    'Rio Grande do Norte',
+    'Rondônia',
+    'Roraima',
+    'Rio Grande do Sul',
+    'Santa Catarina',
+    'Sergipe',
+    'São Paulo',
+    'Tocantins',
   ];
 
   const services = [
@@ -65,17 +92,71 @@ export default function OnboardingProfileScreen({ navigation }) {
     });
   }, []);
 
+  const handlePickPhoto = useCallback(async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert(
+        'Permissao necessaria',
+        'Autorize o acesso a galeria para escolher uma foto de perfil.'
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+    });
+
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      const selectedAsset = result.assets[0];
+      setPhotoUri(selectedAsset.uri);
+      setUploadedPhoto(null);
+      setPhotoError(null);
+      setUploadingPhoto(true);
+
+      try {
+        const uploadResult = await uploadOnboardingImage(selectedAsset);
+        setUploadedPhoto(uploadResult);
+      } catch (err) {
+        console.error('[OnboardingProfile] erro ao enviar foto de perfil', {
+          message: err?.message,
+          response: err?.response?.data,
+          status: err?.response?.status,
+        });
+        const message =
+          err?.response?.data?.message ||
+          err?.message ||
+          'Nao foi possivel enviar a foto. Tente selecionar novamente.';
+        setPhotoError(message);
+        setPhotoUri(null);
+      } finally {
+        setUploadingPhoto(false);
+      }
+    }
+  }, []);
+
   const bioLength = bio.trim().length;
+  const cepDigits = cep.replace(/\D/g, '');
+
+  const formatCep = useCallback((value) => {
+    const digits = value.replace(/\D/g, '').slice(0, 8);
+    if (digits.length <= 5) return digits;
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  }, []);
 
   const calculateProgress = useCallback(() => {
     let completed = 0;
-    if (name.trim().length >= 3) completed += 20;
-    if (hasPhoto) completed += 20;
-    if (selectedRegion) completed += 20;
-    if (selectedServices.length > 0) completed += 20;
-    if (bioLength >= 20) completed += 20;
+    if (name.trim().length >= 3) completed += 17;
+    if (hasPhoto) completed += 17;
+    if (selectedRegion) completed += 17;
+    if (cepDigits.length === 8) completed += 16;
+    if (selectedServices.length > 0) completed += 16;
+    if (bioLength >= 20) completed += 17;
     return completed;
-  }, [name, hasPhoto, selectedRegion, selectedServices, bioLength]);
+  }, [name, hasPhoto, selectedRegion, cepDigits, selectedServices, bioLength]);
 
   const progress = calculateProgress();
   const canContinue = progress === 100;
@@ -106,11 +187,15 @@ export default function OnboardingProfileScreen({ navigation }) {
         name: name.trim(),
         bio,
         service_region: selectedRegion,
+        cep,
         specialties: selectedSpecialties,
         experience_years: experienceYearsFromQuestions,
+        profile_photo_url: uploadedPhoto?.url,
+        profile_photo_path: uploadedPhoto?.path,
+        profile_photo_thumb_url: uploadedPhoto?.thumb_url,
       });
       resetQuestionsData();
-      navigation.navigate('OnboardingFirstAction');
+      navigation.navigate('OnboardingSelectDayOfWeek');
     } catch (err) {
       console.error('Error completing profile step:', err);
     }
@@ -122,9 +207,11 @@ export default function OnboardingProfileScreen({ navigation }) {
     name,
     navigation,
     resetQuestionsData,
+    cep,
     selectedRegion,
     selectedServices,
     services,
+    uploadedPhoto,
   ]);
 
   if (!status) {
@@ -181,7 +268,7 @@ export default function OnboardingProfileScreen({ navigation }) {
             <View style={styles.photoCard}>
               <View style={styles.photoSection}>
                 <Pressable
-                  onPress={() => setHasPhoto(!hasPhoto)}
+                  onPress={handlePickPhoto}
                   style={styles.photoPickerWrap}
                 >
                   <View
@@ -193,18 +280,29 @@ export default function OnboardingProfileScreen({ navigation }) {
                       },
                     ]}
                   >
-                    {hasPhoto ? (
-                      <Text style={styles.photoEmoji}>👩</Text>
+                    {photoUri ? (
+                      <Image source={{ uri: photoUri }} style={styles.photoImage} />
                     ) : (
                       <Feather name="user" size={42} color={colors.mutedForeground} />
                     )}
                   </View>
                   <View style={styles.photoBadge}>
-                    <Feather name="camera" size={16} color={colors.primaryForeground} />
+                    {uploadingPhoto ? (
+                      <ActivityIndicator size="small" color={colors.primaryForeground} />
+                    ) : (
+                      <Feather name="camera" size={16} color={colors.primaryForeground} />
+                    )}
                   </View>
                 </Pressable>
-                <Text style={styles.photoTitle}>{hasPhoto ? 'Toque para trocar sua foto' : 'Adicione sua melhor foto'}</Text>
+                <Text style={styles.photoTitle}>
+                  {uploadingPhoto
+                    ? 'Enviando sua foto...'
+                    : hasPhoto
+                      ? 'Toque para trocar sua foto'
+                      : 'Adicione sua melhor foto'}
+                </Text>
                 <Text style={styles.photoSubtitle}>Um perfil com foto transmite mais confiança para clientes.</Text>
+                {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
               </View>
             </View>
           </View>
@@ -258,6 +356,19 @@ export default function OnboardingProfileScreen({ navigation }) {
                 />
               </View>
             )}
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>CEP</Text>
+            <TextInput
+              value={cep}
+              onChangeText={(value) => setCep(formatCep(value))}
+              placeholder="00000-000"
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="number-pad"
+              maxLength={9}
+              style={styles.textInput}
+            />
           </View>
 
           <View style={styles.section}>
@@ -340,7 +451,7 @@ export default function OnboardingProfileScreen({ navigation }) {
         <AppButton
           title={saving ? 'Salvando...' : 'Continuar'}
           onPress={handleContinue}
-          disabled={!canContinue || saving}
+          disabled={!canContinue || saving || uploadingPhoto}
           left={
             saving ? (
               <ActivityIndicator color={colors.primaryForeground} />
@@ -349,9 +460,11 @@ export default function OnboardingProfileScreen({ navigation }) {
             )
           }
         />
-        {!canContinue && (
+        {uploadingPhoto ? (
+          <Text style={styles.footerHelper}>Aguarde o envio da foto para continuar</Text>
+        ) : !canContinue ? (
           <Text style={styles.footerHelper}>Preencha todos os campos obrigatórios para chegar a 100%</Text>
-        )}
+        ) : null}
       </View>
     </View>
   );
@@ -451,9 +564,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  photoEmoji: {
-    fontSize: 54,
+  photoImage: {
+    width: '100%',
+    height: '100%',
   },
   photoBadge: {
     position: 'absolute',
@@ -479,6 +594,14 @@ const styles = StyleSheet.create({
     color: colors.mutedForeground,
     fontSize: typography.fontSize.xs,
     lineHeight: 18,
+    textAlign: 'center',
+    maxWidth: 260,
+  },
+  photoError: {
+    marginTop: spacing.sm,
+    color: colors.danger,
+    fontSize: typography.fontSize.xs,
+    lineHeight: 16,
     textAlign: 'center',
     maxWidth: 260,
   },

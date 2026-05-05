@@ -2,9 +2,8 @@ export const onboardingStepToRoute = {
   welcome: 'OnboardingWelcome',
   questions: 'QuestionsClients',
   profile: 'OnboardingProfile',
-  account_intro: 'OnboardingAccountIntro',
+  select_day_of_week: 'OnboardingSelectDayOfWeek',
   kyc: 'OnboardingKYC',
-  goal: 'OnboardingFirstGoal',
   tutorial: 'OnboardingTutorial',
 };
 

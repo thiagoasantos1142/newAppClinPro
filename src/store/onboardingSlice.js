@@ -8,9 +8,8 @@ const ONBOARDING_ORDER = [
   'welcome',
   'questions',
   'profile',
-  'account_intro',
+  'select_day_of_week',
   'kyc',
-  'goal',
   'tutorial',
 ];
 
