@@ -507,8 +507,6 @@ function mapRecentTransactionsResponse(response) {
   }));
 }
 
-const FORCED_ACCOUNT_STATUS = 'APPROVED';
-
 export default function DigitalAccountOverviewScreen({ navigation }) {
   const dispatch = useDispatch();
   const [balanceVisible, setBalanceVisible] = useState(false);
@@ -675,7 +673,6 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
 
   useEffect(() => {
     const currentStatus =
-      FORCED_ACCOUNT_STATUS ||
       accountStatus?.status ||
       accountStatus?.account_status ||
       accountStatus?.account?.status ||
@@ -934,7 +931,6 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
 
   const handleStatusModalPrimaryAction = useCallback(async () => {
     const currentStatus =
-      FORCED_ACCOUNT_STATUS ||
       accountStatus?.status ||
       accountStatus?.account_status ||
       accountStatus?.account?.status ||
