@@ -36,8 +36,6 @@
       "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
@@ -55,6 +53,7 @@
       "expo-video",
       "expo-audio",
       "expo-asset",
+      "expo-file-system",
       [
         "expo-image-picker",
         {
