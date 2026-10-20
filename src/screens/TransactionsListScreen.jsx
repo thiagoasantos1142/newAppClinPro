@@ -39,6 +39,6 @@ export default function TransactionsListScreen({ navigation }) {
     <ModuleTemplate navigation={navigation} title="Lista de Transações" subtitle="Entradas e saídas recentes" sections={sections} actions={[
       { label: 'Ver detalhe da transação', route: 'TransactionHistory', params: { transactionId: items[0]?.id }, icon: 'file-text', disabled: !items[0]?.id },
       { label: 'Abrir Detalhe de Pagamento', route: 'PaymentDetail', params: { paymentId: items[0]?.id }, icon: 'credit-card', disabled: !items[0]?.id },
-    ]} />
+    ]} showAsaasSeal />
   );
 }

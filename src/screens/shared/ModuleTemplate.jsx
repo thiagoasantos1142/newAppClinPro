@@ -1,8 +1,10 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AppButton, AppCard, Badge, ProgressBar } from '../../components/ui.jsx';
-import { colors } from '../../theme/tokens';
+import { colors, textStyles } from '../../theme/tokens';
+import AppHeader from '../../components/AppHeader.jsx';
+import AsaasBaasSeal from '../../components/AsaasBaasSeal.jsx';
 
 export default function ModuleTemplate({
   title,
@@ -15,37 +17,16 @@ export default function ModuleTemplate({
   backParams,
   navigation,
   children,
+  showAsaasSeal = false,
 }) {
-  const canGoBack = !!navigation?.canGoBack?.();
-  const canNavigateBackRoute = !!(backRoute && navigation?.navigate);
-  const shouldShowBack = showBack && (canGoBack || canNavigateBackRoute);
-
-  const onBack = () => {
-    if (canGoBack) {
-      navigation.goBack();
-      return;
-    }
-    if (canNavigateBackRoute) {
-      navigation.navigate(backRoute, backParams || {});
-    }
-  };
-
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          {shouldShowBack ? (
-            <Pressable onPress={onBack} style={styles.backButton}>
-              <Feather name="chevron-left" size={22} color="#FFFFFF" />
-            </Pressable>
-          ) : (
-            <View style={styles.menuSlot} />
-          )}
-          <Text style={styles.headerTitle}>{title}</Text>
-        </View>
-        {!!subtitle && <Text style={styles.headerSubtitle}>{subtitle}</Text>}
-      </View>
-
+      <AppHeader
+        title={title}
+        subtitle={subtitle}
+        navigation={navigation}
+        showBack={showBack}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         {hero ? (
           <AppCard>
@@ -90,6 +71,8 @@ export default function ModuleTemplate({
             left={<Feather name={action.icon || 'arrow-right'} size={16} color={action.variant === 'secondary' ? colors.cardForeground : '#FFFFFF'} />}
           />
         ))}
+
+        {showAsaasSeal ? <AsaasBaasSeal /> : null}
       </ScrollView>
     </View>
   );
@@ -97,21 +80,15 @@ export default function ModuleTemplate({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { backgroundColor: colors.primary, paddingTop: 56, paddingHorizontal: 20, paddingBottom: 20 },
-  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
-  menuSlot: { width: 46 },
-  backButton: { width: 38, height: 38, borderRadius: 12, marginRight: 8, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: '#FFF', fontSize: 24, fontWeight: '700' },
-  headerSubtitle: { color: 'rgba(255,255,255,0.85)', marginTop: 4, fontSize: 13, marginLeft: 46 },
   content: { padding: 16, gap: 12, paddingBottom: 28 },
   heroTitle: { color: colors.mutedForeground, fontSize: 12 },
   heroValue: { color: colors.primary, fontSize: 32, fontWeight: '800', marginTop: 4 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  sectionTitle: { color: colors.cardForeground, fontSize: 16, fontWeight: '700' },
-  itemRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, gap: 10 },
-  itemLabel: { color: colors.mutedForeground, fontSize: 13, flex: 1 },
-  itemValue: { color: colors.cardForeground, fontSize: 13, fontWeight: '600', flex: 1, textAlign: 'right' },
-  body: { color: colors.mutedForeground, fontSize: 13, lineHeight: 20 },
-  muted: { color: colors.mutedForeground, fontSize: 12, marginTop: 8 },
+  sectionHeader: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 },
+  sectionTitle: { ...textStyles.cardTitle, color: colors.cardForeground, flexShrink: 1 },
+  itemRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 8, gap: 6 },
+  itemLabel: { ...textStyles.secondary, color: colors.mutedForeground, flexGrow: 1, flexShrink: 1, minWidth: 100 },
+  itemValue: { ...textStyles.secondary, color: colors.cardForeground, fontFamily: 'Inter_600SemiBold', fontWeight: '600', flexGrow: 1, flexShrink: 1, minWidth: 100, textAlign: 'right' },
+  body: { ...textStyles.secondary, color: colors.mutedForeground },
+  muted: { ...textStyles.caption, color: colors.mutedForeground, marginTop: 8 },
 });
 

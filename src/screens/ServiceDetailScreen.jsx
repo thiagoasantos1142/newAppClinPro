@@ -4,6 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { services } from '../data/mockData';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
+import AppHeader from '../components/AppHeader.jsx';
 
 export default function ServiceDetailScreen({ route, navigation }) {
   const { serviceId } = route.params || {};
@@ -11,14 +12,7 @@ export default function ServiceDetailScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Feather name="chevron-left" size={22} color="#FFFFFF" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Detalhes do Serviço</Text>
-        </View>
-      </View>
+      <AppHeader title="Detalhes do Serviço" subtitle={service.type} navigation={navigation} showBack icon="briefcase" />
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.priceHero}>

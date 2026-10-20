@@ -4,6 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
 import { createCommunityPost } from '../services/modules/community.service';
+import AppHeader from '../components/AppHeader.jsx';
 
 const categories = ['Dicas', 'Conquistas', 'Perguntas', 'Treinamentos', 'Motivacao'];
 
@@ -38,17 +39,7 @@ export default function CreatePostScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Feather name="chevron-left" size={20} color="#FFFFFF" />
-          </Pressable>
-          <View>
-            <Text style={styles.headerTitle}>Criar Publicação</Text>
-            <Text style={styles.headerSubtitle}>Compartilhe uma dica com a comunidade</Text>
-          </View>
-        </View>
-      </View>
+      <AppHeader title="Criar Publicação" subtitle="Compartilhe uma dica com a comunidade" navigation={navigation} showBack icon="edit-3" />
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <AppCard>
@@ -133,7 +124,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     paddingHorizontal: 12,
     color: colors.cardForeground,
-    fontSize: 14,
+    fontSize: 16,
   },
   textarea: {
     minHeight: 140,

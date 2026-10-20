@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import ModuleTemplate from './shared/ModuleTemplate.jsx';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { canAccessStep, getRouteForStep } from '../navigation/onboardingStepMap';
+import { ASAAS_FINANCIAL_SERVICES_CLAUSE } from '../config/legal';
 
 export default function OnboardingAccountIntroScreen({ navigation }) {
   const { status, completeStep, loading } = useOnboarding();
@@ -60,11 +61,16 @@ export default function OnboardingAccountIntroScreen({ navigation }) {
           title: 'Com a conta digital voce:',
           body: '✔ Recebe via Pix\n✔ Organiza seus ganhos\n✔ Separa vida pessoal do trabalho',
         },
+        {
+          title: 'Prestação de Serviços Financeiros',
+          body: ASAAS_FINANCIAL_SERVICES_CLAUSE,
+        },
       ]}
       actions={[
         { label: 'Ativar minha conta', onPress: handleActivate, icon: 'arrow-right', disabled: loading || !status },
         { label: 'Deixar para depois', onPress: handleSkip, variant: 'secondary', icon: 'clock', disabled: loading || !status },
       ]}
+      showAsaasSeal
     />
   );
 }

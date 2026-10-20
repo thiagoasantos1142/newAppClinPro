@@ -5,6 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { AppCard, AppButton, ProgressBar } from '../components/ui.jsx';
 import { getTrainingTrailById } from '../services/modules/training.service';
 import { colors } from '../theme/tokens';
+import AppHeader from '../components/AppHeader.jsx';
 
 export default function TrailDetailScreen({ route, navigation }) {
   const { trailId } = route.params || {};
@@ -96,14 +97,7 @@ export default function TrailDetailScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Feather name="chevron-left" size={22} color="#FFFFFF" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Detalhes da Trilha</Text>
-        </View>
-      </View>
+      <AppHeader title="Detalhes da Trilha" subtitle={trail?.title || 'Carregando trilha...'} navigation={navigation} showBack icon="book-open" />
 
       {loading ? (
         <View style={styles.centerState}>

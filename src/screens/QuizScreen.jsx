@@ -5,6 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { AppButton, AppCard, ProgressBar } from '../components/ui.jsx';
 import { getTrainingQuizById, submitTrainingQuizById } from '../services/modules/training.service';
 import { colors } from '../theme/tokens';
+import AppHeader from '../components/AppHeader.jsx';
 
 export default function QuizScreen({ route, navigation }) {
   const { trailId, quizId: routeQuizId } = route.params || {};
@@ -103,19 +104,7 @@ export default function QuizScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Feather name="chevron-left" size={22} color="#FFFFFF" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Avaliação</Text>
-        </View>
-        <View style={styles.rowBetween}>
-          <Text style={styles.headerMeta}>Questão {currentQuestion + 1} de {questions.length}</Text>
-          <Text style={styles.headerMeta}>{Math.round(progress)}%</Text>
-        </View>
-        <ProgressBar value={progress} color="#FFFFFF" style={{ marginTop: 8, backgroundColor: 'rgba(255,255,255,0.3)' }} />
-      </View>
+      <AppHeader title="Avaliação" subtitle={`Questão ${currentQuestion + 1} de ${questions.length} • ${Math.round(progress)}%`} navigation={navigation} showBack icon="check-square" />
 
       <ScrollView contentContainerStyle={styles.content}>
         <AppCard>

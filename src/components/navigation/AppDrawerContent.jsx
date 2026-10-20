@@ -35,6 +35,23 @@ function getActiveKeyFromNestedState(state) {
   const stackState = drawerRoute?.state;
   const stackRoute = stackState?.routes?.[stackState?.index ?? 0];
   const currentStackScreen = stackRoute?.name ?? 'MainTabs';
+  const tabState = stackRoute?.state;
+  const currentTab = tabState?.routes?.[tabState.index ?? 0]?.name;
+  const routeName = currentTab || currentStackScreen;
+  const keysByRoute = {
+    HomeTab: 'home',
+    ServicesTab: 'services',
+    TrainingTab: 'training',
+    CommunityTab: 'community',
+    ProfileTab: 'profile',
+    WeeklySchedule: 'schedule',
+    FinancialDashboard: 'financial',
+    DigitalAccountOverview: 'bank',
+    ReputationOverview: 'reputation',
+    VideoAvTest: 'video-av-test',
+  };
+
+  return keysByRoute[routeName];
 }
 
 export default function AppDrawerContent(props) {

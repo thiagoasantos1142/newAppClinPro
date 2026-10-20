@@ -45,5 +45,5 @@ export default function PaymentDetailScreen({ navigation, route }) {
     ] }];
   }, [error, loading, payment]);
 
-  return <ModuleTemplate navigation={navigation} title="Detalhe de Pagamento" subtitle={paymentId ? `Pagamento #${paymentId}` : 'Pagamento'} sections={sections} />;
+  return <ModuleTemplate navigation={navigation} title="Detalhe de Pagamento" subtitle={paymentId ? `Pagamento #${paymentId}` : 'Pagamento'} sections={sections} showAsaasSeal />;
 }

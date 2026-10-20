@@ -40,7 +40,8 @@ export default function DigitalAccountOverviewScreen({ navigation }) {
   }, [data, error, loading]);
 
   return <ModuleTemplate navigation={navigation} title="Conta Digital" subtitle="Visão geral da conta" hero={hero} sections={sections} actions={[
-    { label: 'Histórico da Conta', route: 'TransactionHistory', icon: 'clock' },
+    { label: 'Histórico da Conta', route: 'Transactions', icon: 'clock' },
     { label: 'Transferir', route: 'TransferMoney', variant: 'secondary', icon: 'send' },
-  ]} />;
+    { label: 'Dados da Conta', route: 'AccountDetails', variant: 'secondary', icon: 'credit-card' },
+  ]} showAsaasSeal />;
 }

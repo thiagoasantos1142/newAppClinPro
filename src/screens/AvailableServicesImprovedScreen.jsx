@@ -6,6 +6,7 @@ import { Feather } from '@expo/vector-icons';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
 import { acceptServiceById, getAvailableServices } from '../services/modules/services.service';
+import AppHeader from '../components/AppHeader.jsx';
 
 export default function AvailableServicesImprovedScreen({ navigation }) {
   const [showFilters, setShowFilters] = useState(false);
@@ -137,20 +138,15 @@ export default function AvailableServicesImprovedScreen({ navigation }) {
   return (
     <RequireClinPro>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <View style={styles.titleRow}>
-              <View style={styles.menuSlot} />
-              <Text style={styles.headerTitle}>Serviços Disponíveis</Text>
-            </View>
-            <Pressable onPress={() => setShowFilters(true)} style={styles.filterButton}>
-              <Feather name="filter" size={18} color="#FFFFFF" />
-            </Pressable>
-          </View>
-          <Text style={styles.headerSubtitle}>
-            {loading ? 'Carregando serviços...' : `${pagination.total || list.length} serviços próximos a você`}
-          </Text>
-        </View>
+        <AppHeader
+          title="Serviços Disponíveis"
+          subtitle={loading ? 'Carregando serviços...' : `${pagination.total || list.length} serviços próximos a você`}
+          icon="list"
+          navigation={navigation}
+          actionIcon="filter"
+          actionLabel="Filtrar"
+          onAction={() => setShowFilters(true)}
+        />
 
         <ScrollView contentContainerStyle={styles.content} onScroll={handleScroll} scrollEventThrottle={16}>
           {loading ? (

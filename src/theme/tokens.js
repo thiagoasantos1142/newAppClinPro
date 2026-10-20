@@ -128,20 +128,89 @@ export const spacing = {
 
 export const typography = {
   fontFamily: {
-    heading: 'Omnium, sans-serif',
-    body: 'Museo Sans, sans-serif',
+    regular: 'Inter_400Regular',
+    medium: 'Inter_500Medium',
+    semibold: 'Inter_600SemiBold',
+    bold: 'Inter_700Bold',
+    heading: 'Inter_600SemiBold',
+    body: 'Inter_400Regular',
   },
   fontSize: {
+    caption: 12,
+    secondary: 13,
+    body: 14,
+    input: 16,
+    cardTitle: 16,
+    sectionTitle: 18,
+    title: 20,
     xs: 12,
     sm: 14,
     md: 16,
     lg: 20,
-    xl: 24,
-    x2l: 32,
+    xl: 20,
+    x2l: 20,
   },
   fontWeight: {
     regular: '400',
     medium: '500',
+    semibold: '600',
     bold: '700',
+  },
+};
+
+export const textStyles = {
+  title: {
+    fontFamily: typography.fontFamily.semibold,
+    fontSize: typography.fontSize.title,
+    fontWeight: typography.fontWeight.semibold,
+    lineHeight: 26,
+  },
+  sectionTitle: {
+    fontFamily: typography.fontFamily.semibold,
+    fontSize: typography.fontSize.sectionTitle,
+    fontWeight: typography.fontWeight.semibold,
+    lineHeight: 24,
+  },
+  cardTitle: {
+    fontFamily: typography.fontFamily.semibold,
+    fontSize: typography.fontSize.cardTitle,
+    fontWeight: typography.fontWeight.semibold,
+    lineHeight: 22,
+  },
+  body: {
+    fontFamily: typography.fontFamily.regular,
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.regular,
+    lineHeight: 20,
+  },
+  secondary: {
+    fontFamily: typography.fontFamily.regular,
+    fontSize: typography.fontSize.secondary,
+    fontWeight: typography.fontWeight.regular,
+    lineHeight: 18,
+  },
+  caption: {
+    fontFamily: typography.fontFamily.regular,
+    fontSize: typography.fontSize.caption,
+    fontWeight: typography.fontWeight.regular,
+    lineHeight: 16,
+  },
+  button: {
+    fontFamily: typography.fontFamily.semibold,
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.semibold,
+    lineHeight: 20,
+  },
+  tabLabel: {
+    fontFamily: typography.fontFamily.medium,
+    fontSize: typography.fontSize.caption,
+    fontWeight: typography.fontWeight.medium,
+    lineHeight: 16,
+  },
+  input: {
+    fontFamily: typography.fontFamily.regular,
+    fontSize: typography.fontSize.input,
+    fontWeight: typography.fontWeight.regular,
+    lineHeight: 22,
   },
 };

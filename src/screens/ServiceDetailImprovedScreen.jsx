@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { Feather } from '@expo/vector-icons';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
+import AppHeader from '../components/AppHeader.jsx';
 import { acceptServiceById, getServiceById, updateServiceStatus } from '../services/modules/services.service';
 
 function formatDurationFromDateRange(startAt, endAt) {
@@ -124,17 +125,7 @@ export default function ServiceDetailImprovedScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Feather name="chevron-left" size={20} color="#FFFFFF" />
-          </Pressable>
-          <View>
-            <Text style={styles.headerTitle}>Detalhes do Serviço</Text>
-            <Text style={styles.headerSubtitle}>{view?.distanceHeader || 'Carregando...'}</Text>
-          </View>
-        </View>
-      </View>
+      <AppHeader title="Detalhes do Serviço" subtitle={view?.distanceHeader || 'Carregando...'} navigation={navigation} showBack icon="briefcase" />
 
       {loading ? (
         <View style={styles.centerState}>

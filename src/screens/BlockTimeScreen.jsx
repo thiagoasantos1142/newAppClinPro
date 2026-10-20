@@ -7,6 +7,7 @@ import { Feather } from '@expo/vector-icons';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
 import { createScheduleBlock, deleteScheduleBlock, getScheduleBlocks } from '../services/modules/schedule.service';
+import AppHeader from '../components/AppHeader.jsx';
 
 moment.locale('pt-br');
 
@@ -82,15 +83,7 @@ export default function BlockTimeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Feather name="chevron-left" size={22} color="#FFFFFF" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Bloquear Horário</Text>
-        </View>
-        <Text style={styles.headerSubtitle}>Defina períodos indisponíveis</Text>
-      </View>
+      <AppHeader title="Bloquear Horário" subtitle="Defina períodos indisponíveis" navigation={navigation} showBack icon="calendar" />
 
       <ScrollView contentContainerStyle={styles.content}>
         <AppCard>

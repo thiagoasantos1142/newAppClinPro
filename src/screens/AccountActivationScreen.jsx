@@ -37,5 +37,5 @@ export default function AccountActivationScreen({ navigation }) {
   return <ModuleTemplate navigation={navigation} title="Ativação de Conta" subtitle="Finalize seu cadastro bancário" sections={sections} actions={[
     { label: loading ? 'Ativando...' : 'Ativar Conta', onPress: handleActivate, icon: 'check', disabled: loading },
     { label: 'Voltar para Conta Digital', route: 'DigitalAccountOverview', variant: 'secondary', icon: 'arrow-left' },
-  ]} />;
+  ]} showAsaasSeal />;
 }

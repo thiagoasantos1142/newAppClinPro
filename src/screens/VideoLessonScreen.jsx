@@ -6,6 +6,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { getTrainingLessonById, saveTrainingLessonProgress } from '../services/modules/training.service';
 import { colors } from '../theme/tokens';
+import AppHeader from '../components/AppHeader.jsx';
 
 export default function VideoLessonScreen({ route, navigation }) {
   const AUTO_SAVE_INTERVAL_SECONDS = 15;
@@ -482,17 +483,7 @@ export default function VideoLessonScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Feather name="chevron-left" size={22} color="#FFFFFF" />
-          </Pressable>
-          <View>
-            <Text style={styles.trailText}>{resolvedTrailId ? `Trilha ${resolvedTrailId}` : 'Treinamento'}</Text>
-            <Text style={styles.headerTitle}>Aula</Text>
-          </View>
-        </View>
-      </View>
+      <AppHeader title="Aula" subtitle={resolvedTrailId ? `Trilha ${resolvedTrailId}` : 'Treinamento'} navigation={navigation} showBack icon="play-circle" />
 
       <View style={styles.videoBox}>
         {videoUri && !loading && !error ? (

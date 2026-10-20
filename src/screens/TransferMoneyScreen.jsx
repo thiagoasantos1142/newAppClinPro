@@ -4,6 +4,8 @@ import { Feather } from '@expo/vector-icons';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { createAccountTransfer } from '../services/modules/finance.service';
 import { colors } from '../theme/tokens';
+import AppHeader from '../components/AppHeader.jsx';
+import AsaasBaasSeal from '../components/AsaasBaasSeal.jsx';
 
 export default function TransferMoneyScreen({ navigation }) {
   const [pixKey, setPixKey] = useState('***@email.com');
@@ -23,7 +25,7 @@ export default function TransferMoneyScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}><View style={styles.headerRow}><Pressable onPress={() => navigation.goBack()} style={styles.backButton}><Feather name="chevron-left" size={20} color="#FFF" /></Pressable><Text style={styles.headerTitle}>Transferir Dinheiro</Text></View><Text style={styles.headerSubtitle}>Envie valores para outra conta</Text></View>
+      <AppHeader title="Transferir Dinheiro" subtitle="Envie valores para outra conta" navigation={navigation} showBack icon="send" />
       <ScrollView contentContainerStyle={styles.content}>
         <AppCard>
           <Text style={styles.label}>Chave PIX</Text>
@@ -34,6 +36,7 @@ export default function TransferMoneyScreen({ navigation }) {
           <TextInput value={description} onChangeText={setDescription} style={styles.input} />
         </AppCard>
         <AppButton title={submitting ? 'Confirmando...' : 'Confirmar Transferência'} onPress={onSubmit} disabled={submitting} left={<Feather name="check" size={16} color="#FFF" />} />
+        <AsaasBaasSeal />
       </ScrollView>
     </View>
   );

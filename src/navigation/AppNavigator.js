@@ -3,12 +3,11 @@ import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 import { useAuth } from '../hooks/useAuth';
-import { colors } from '../theme/tokens';
+import { colors, textStyles } from '../theme/tokens';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { getRouteForStep } from './onboardingStepMap';
 import { refreshOnboarding } from '../store/onboardingSlice';
@@ -67,33 +66,26 @@ import BackendConnectionTestScreen from '../screens/dev/BackendConnectionTestScr
 import VideoAvTestScreen from '../screens/dev/VideoAvTestScreen.jsx';
 import PhoneLoginScreen from '../screens/auth/PhoneLoginScreen.jsx';
 import OtpVerificationScreen from '../screens/auth/OtpVerificationScreen.jsx';
-import AppDrawerContent from '../components/navigation/AppDrawerContent.jsx';
 import SubscriptionRequiredScreen from '../screens/SubscriptionRequiredScreen.jsx';
+import AppDrawerContent from '../components/navigation/AppDrawerContent.jsx';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
-const Drawer = createDrawerNavigator();
 const AuthStack = createNativeStackNavigator();
+const Drawer = createDrawerNavigator();
 
-function MainTabs({ navigation }) {
-  const insets = useSafeAreaInsets();
+function MainTabs() {
+  const { width, fontScale } = useWindowDimensions();
+  const compact = width <= 360 || fontScale >= 1.3;
 
   return (
-    <View style={{ flex: 1 }}>
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.mutedForeground,
-          tabBarStyle: {
-            height: 58 + insets.bottom,
-            paddingTop: 8,
-            paddingBottom: Math.max(insets.bottom, 10),
-            borderTopColor: colors.border,
-            backgroundColor: '#FFFFFF',
-          },
-          tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
-          tabBarIcon: ({ color, size, focused }) => {
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: colors.primary,
+        tabBarLabelStyle: textStyles.tabLabel,
+        tabBarItemStyle: { minWidth: 0 },
+        tabBarIcon: ({ color, size }) => {
             let icon = <Feather name="user" size={size} color={color} />;
 
             if (route.name === 'HomeTab') icon = <Feather name="home" size={size} color={color} />;
@@ -102,44 +94,39 @@ function MainTabs({ navigation }) {
             if (route.name === 'CommunityTab') icon = <Feather name="users" size={size} color={color} />;
             if (route.name === 'ProfileTab') icon = <Feather name="user" size={size} color={color} />;
 
-            return <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>{icon}</View>;
-          },
-        })}
-      >
-        <Tab.Screen name="HomeTab" component={HomeScreen} options={{ title: 'Home' }} />
-        <Tab.Screen name="ServicesTab" component={AvailableServicesImprovedScreen} options={{ title: 'Serviços' }} />
-        <Tab.Screen name="TrainingTab" component={TrainingListScreen} options={{ title: 'Treinar' }} />
-        <Tab.Screen name="CommunityTab" component={CommunityFeedScreen} options={{ title: 'Comunidade' }} />
-        <Tab.Screen name="ProfileTab" component={require('../screens/ProfileScreen.jsx').default} options={{ title: 'Perfil' }} />
-      </Tab.Navigator>
-
-      <Pressable onPress={() => navigation.openDrawer()} style={[styles.menuButton, { top: insets.top + 2 }]}>
-        <Feather name="menu" size={22} color="#FFFFFF" />
-      </Pressable>
-    </View>
+            return icon;
+        },
+      })}
+    >
+      <Tab.Screen name="HomeTab" component={HomeScreen} options={{ title: 'Início' }} />
+      <Tab.Screen name="ServicesTab" component={AvailableServicesImprovedScreen} options={{ title: 'Serviços' }} />
+      <Tab.Screen name="TrainingTab" component={TrainingListScreen} options={{ title: 'Treinar' }} />
+      <Tab.Screen name="CommunityTab" component={CommunityFeedScreen} options={{ title: compact ? 'Social' : 'Comunidade' }} />
+      <Tab.Screen name="ProfileTab" component={require('../screens/ProfileScreen.jsx').default} options={{ title: 'Perfil' }} />
+    </Tab.Navigator>
   );
 }
 
 function AppStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="MainTabs" component={MainTabs} />
-      <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen} />
+      <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+      <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen} options={{ headerShown: false }} />
       <Stack.Screen name="AvailableServicesImproved" component={AvailableServicesImprovedScreen} />
-      <Stack.Screen name="ServiceDetailImproved" component={ServiceDetailImprovedScreen} />
+      <Stack.Screen name="ServiceDetailImproved" component={ServiceDetailImprovedScreen} options={{ headerShown: false }} />
       <Stack.Screen name="MyServices" component={MyServicesScreen} />
       <Stack.Screen name="ServiceHistory" component={ServiceHistoryScreen} />
       <Stack.Screen name="WeeklySchedule" component={WeeklyScheduleScreen} />
       <Stack.Screen name="DailySchedule" component={DailyScheduleScreen} />
-      <Stack.Screen name="BlockTime" component={BlockTimeScreen} />
+      <Stack.Screen name="BlockTime" component={BlockTimeScreen} options={{ headerShown: false }} />
       <Stack.Screen name="WorkloadOverview" component={WorkloadOverviewScreen} />
       <Stack.Screen name="CommunityFeed" component={CommunityFeedScreen} />
-      <Stack.Screen name="CreatePost" component={CreatePostScreen} />
+      <Stack.Screen name="CreatePost" component={CreatePostScreen} options={{ headerShown: false }} />
       <Stack.Screen name="PostDetail" component={PostDetailScreen} />
       <Stack.Screen name="ProfileImproved" component={ProfileImprovedScreen} />
-      <Stack.Screen name="TrailDetail" component={TrailDetailScreen} />
-      <Stack.Screen name="VideoLesson" component={VideoLessonScreen} />
-      <Stack.Screen name="Quiz" component={QuizScreen} />
+      <Stack.Screen name="TrailDetail" component={TrailDetailScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="VideoLesson" component={VideoLessonScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Quiz" component={QuizScreen} options={{ headerShown: false }} />
       <Stack.Screen name="QuizResult" component={QuizResultScreen} />
       <Stack.Screen name="Certificate" component={CertificateScreen} />
       <Stack.Screen name="FinancialDashboard" component={FinancialDashboardScreen} />
@@ -148,10 +135,10 @@ function AppStack() {
       <Stack.Screen name="MEIControl" component={MEIControlScreen} />
       <Stack.Screen name="DigitalAccountOverview" component={DigitalAccountOverviewScreen} />
       <Stack.Screen name="TransactionHistory" component={TransactionHistoryScreen} />
-      <Stack.Screen name="TransferMoney" component={TransferMoneyScreen} />
+      <Stack.Screen name="TransferMoney" component={TransferMoneyScreen} options={{ headerShown: false }} />
       <Stack.Screen name="AccountDetails" component={AccountDetailsScreen} />
       <Stack.Screen name="AccountActivation" component={AccountActivationScreen} />
-      <Stack.Screen name="PersonalData" component={PersonalDataScreen} />
+      <Stack.Screen name="PersonalData" component={PersonalDataScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ReputationOverview" component={ReputationOverviewScreen} />
       <Stack.Screen name="ReviewsList" component={ReviewsListScreen} />
       <Stack.Screen name="VerificationStatus" component={VerificationStatusScreen} />
@@ -265,12 +252,7 @@ function OnboardingGate() {
     return (
       <Drawer.Navigator
         id="RootDrawer"
-        screenOptions={{
-          headerShown: false,
-          drawerType: 'slide',
-          overlayColor: 'rgba(0,0,0,0.5)',
-          drawerStyle: { width: 300 },
-        }}
+        screenOptions={{ headerShown: false }}
         drawerContent={(props) => <AppDrawerContent {...props} />}
       >
         <Drawer.Screen name="RootStack" component={AppStack} />
@@ -322,27 +304,3 @@ export default function AppNavigator() {
   );
 }
 
-const styles = StyleSheet.create({
-  tabIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 2,
-  },
-  tabIconWrapActive: {
-    backgroundColor: 'rgba(31,128,234,0.12)',
-  },
-  menuButton: {
-    position: 'absolute',
-    left: 12,
-    zIndex: 30,
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

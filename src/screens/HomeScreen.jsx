@@ -6,6 +6,7 @@ import { RequireClinPro } from '../components/RequireClinPro.jsx';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
 import { getHomeDashboard } from '../services/modules/home.service';
+import AppHeader from '../components/AppHeader.jsx';
 
 export default function HomeScreen({ navigation }) {
   const [dashboard, setDashboard] = useState(null);
@@ -53,13 +54,7 @@ export default function HomeScreen({ navigation }) {
   return (
     <RequireClinPro>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerTitleRow}>
-            <View style={styles.menuSlot} />
-            <Text style={styles.headerTitle}>Olá, {greetingName}</Text>
-          </View>
-          <Text style={styles.headerSubtitle}>Vamos organizar sua semana?</Text>
-        </View>
+        <AppHeader title={`Olá, ${greetingName}`} subtitle="Vamos organizar sua semana?" icon="home" navigation={navigation} />
 
         <ScrollView contentContainerStyle={styles.content}>
           {loading ? (

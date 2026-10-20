@@ -35,5 +35,5 @@ export default function AccountDetailsScreen({ navigation }) {
     ] }];
   }, [data, error, loading]);
 
-  return <ModuleTemplate navigation={navigation} title="Dados da Conta" subtitle="Informações bancárias" sections={sections} actions={[{ label: 'Ativar Conta', route: 'AccountActivation', icon: 'check-circle' }]} />;
+  return <ModuleTemplate navigation={navigation} title="Dados da Conta" subtitle="Informações bancárias" sections={sections} actions={[{ label: 'Ativar Conta', route: 'AccountActivation', icon: 'check-circle' }]} showAsaasSeal />;
 }

@@ -73,6 +73,7 @@ export default function TransactionHistoryScreen({ navigation, route }) {
       title="Detalhe da Transação"
       subtitle={loading ? 'Carregando...' : error || (transaction?.id ? `Transação ${transaction.id}` : 'Movimentação bancária')}
       sections={sections}
+      showAsaasSeal
     />
   );
 }

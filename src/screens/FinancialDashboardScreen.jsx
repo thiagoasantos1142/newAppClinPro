@@ -57,6 +57,6 @@ export default function FinancialDashboardScreen({ navigation }) {
     <ModuleTemplate navigation={navigation} title="Painel Financeiro" subtitle="Controle de ganhos e despesas" hero={hero} sections={sections} actions={[
       { label: 'Ver Transações', route: 'Transactions', icon: 'list' },
       { label: 'Controle MEI', route: 'MEIControl', variant: 'secondary', icon: 'file-text' },
-    ]} />
+    ]} showAsaasSeal />
   );
 }

@@ -5,6 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
 import { getProfile, updateProfile } from '../services/modules/profile.service';
+import AppHeader from '../components/AppHeader.jsx';
 
 const EMPTY_FORM = {
   name: '',
@@ -79,15 +80,7 @@ export default function PersonalDataScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Feather name="chevron-left" size={22} color="#FFFFFF" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Dados Pessoais</Text>
-        </View>
-        <Text style={styles.headerSubtitle}>Edite as informações do seu perfil</Text>
-      </View>
+      <AppHeader title="Dados Pessoais" subtitle="Edite as informações do seu perfil" navigation={navigation} showBack icon="user" />
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {error ? (
@@ -198,7 +191,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     color: colors.cardForeground,
-    fontSize: 14,
+    fontSize: 16,
   },
   inputMultiline: {
     minHeight: 90,

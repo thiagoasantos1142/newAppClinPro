@@ -6,6 +6,7 @@ import { RequireClinPro } from '../components/RequireClinPro.jsx';
 import { AppCard, Badge, ProgressBar } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
 import { getTrainingTrails } from '../services/modules/training.service';
+import AppHeader from '../components/AppHeader.jsx';
 
 const trailColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
 
@@ -77,18 +78,7 @@ export default function TrainingListScreen({ navigation }) {
   return (
     <RequireClinPro>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerTopRow}>
-            <View style={styles.headerTitleRow}>
-              <View style={styles.menuSlot} />
-              <Text style={styles.headerTitle}>Treinamentos</Text>
-            </View>
-            <View style={styles.headerIconBox}>
-              <MaterialCommunityIcons name="school-outline" size={22} color="#FFF" />
-            </View>
-          </View>
-          <Text style={styles.headerSubtitle}>Aprenda e desenvolva suas habilidades</Text>
-        </View>
+        <AppHeader title="Treinamentos" subtitle="Aprenda e desenvolva suas habilidades" icon="book-open" navigation={navigation} />
 
         <ScrollView contentContainerStyle={styles.content}>
           {loading ? (

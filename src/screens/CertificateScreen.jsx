@@ -14,6 +14,7 @@ import {
   shareCertificateFile,
 } from '../services/modules/certificates.service';
 import { colors } from '../theme/tokens';
+import AppHeader from '../components/AppHeader.jsx';
 
 export default function CertificateScreen({ route, navigation }) {
   const { trailId, certificateId } = route.params || {};
@@ -169,11 +170,7 @@ export default function CertificateScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerIcon}><MaterialCommunityIcons name="certificate" size={30} color="#FFF" /></View>
-        <Text style={styles.headerTitle}>Certificado</Text>
-        <Text style={styles.headerSub}>Parabéns pela conclusão!</Text>
-      </View>
+      <AppHeader title="Certificado" subtitle="Parabéns pela conclusão!" navigation={navigation} showBack icon="award" />
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.certificateCard}>
@@ -216,7 +213,7 @@ export default function CertificateScreen({ route, navigation }) {
           onPress={() => canDownload && onDownload()}
         />
         <AppButton title="Compartilhar" disabled={!canShare} style={{ backgroundColor: '#2563EB' }} left={<Feather name="share-2" size={16} color="#FFF" />} onPress={() => canShare && Linking.openURL(cert.share_url)} />
-        <AppButton title="Voltar aos Treinamentos" variant="secondary" onPress={() => navigation.navigate('TrainingTab')} left={<Feather name="home" size={16} color={colors.cardForeground} />} />
+        <AppButton title="Voltar aos Treinamentos" variant="secondary" onPress={() => navigation.navigate('MainTabs', { screen: 'TrainingTab' })} left={<Feather name="home" size={16} color={colors.cardForeground} />} />
       </ScrollView>
     </View>
   );

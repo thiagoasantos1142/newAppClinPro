@@ -12,6 +12,7 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppButton, AppCard } from '../components/ui.jsx';
+import AsaasBaasSeal from '../components/AsaasBaasSeal.jsx';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 import { useAuth } from '../hooks/useAuth';
 import { useOnboarding } from '../hooks/useOnboarding';
@@ -570,6 +571,8 @@ export default function SubscriptionRequiredScreen({
           </View>
         </View>
 
+        <AsaasBaasSeal style={styles.asaasSeal} />
+
         <View style={styles.bottomSpace} />
       </ScrollView>
 
@@ -928,6 +931,10 @@ const styles = StyleSheet.create({
   },
   bottomSpace: {
     height: 24,
+  },
+  asaasSeal: {
+    marginTop: 4,
+    marginBottom: 8,
   },
   footer: {
     position: 'absolute',

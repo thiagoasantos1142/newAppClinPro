@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
+import AppHeader from '../components/AppHeader.jsx';
 
 export default function QuizResultScreen({ route, navigation }) {
   const { trailId, quizId, result, questions = [], selectedAnswers = {} } = route.params || {};
@@ -30,13 +31,13 @@ export default function QuizResultScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { backgroundColor: passed ? colors.primary : '#F59E0B' }]}>
-        <View style={styles.headerCircle}>
-          <MaterialCommunityIcons name={passed ? 'trophy-outline' : 'trending-up'} size={34} color="#FFF" />
-        </View>
-        <Text style={styles.headerTitle}>{passed ? 'Parabéns!' : 'Quase lá!'}</Text>
-        <Text style={styles.headerSub}>{passed ? 'Você passou na avaliação!' : 'Continue estudando e tente novamente'}</Text>
-      </View>
+      <AppHeader
+        title={passed ? 'Parabéns!' : 'Quase lá!'}
+        subtitle={passed ? 'Você passou na avaliação!' : 'Continue estudando e tente novamente'}
+        navigation={navigation}
+        showBack
+        icon={passed ? 'award' : 'trending-up'}
+      />
 
       <ScrollView contentContainerStyle={styles.content}>
         <AppCard>

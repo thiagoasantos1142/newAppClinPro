@@ -4,6 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { profile } from '../data/mockData';
 import { colors } from '../theme/tokens';
+import AppHeader from '../components/AppHeader.jsx';
 
 const metrics = [
   { label: 'Serviços realizados', value: '342', icon: 'briefcase', bg: '#EFF6FF', color: '#2563EB' },
@@ -15,16 +16,7 @@ const metrics = [
 export default function ProfileImprovedScreen({ navigation }) {
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.menuSlot} />
-          <Text style={styles.headerTitle}>Meu Perfil</Text>
-          <Pressable style={styles.editHeaderButton} onPress={() => navigation.navigate('PersonalData')}>
-            <Feather name="edit-3" size={18} color="#FFFFFF" />
-          </Pressable>
-        </View>
-        <Text style={styles.headerSubtitle}>Profissional de Limpeza</Text>
-      </View>
+      <AppHeader title="Meu Perfil" subtitle="Profissional de Limpeza" icon="user" actionIcon="edit-3" actionLabel="Editar" onAction={() => navigation.navigate('PersonalData')} />
 
       <ScrollView contentContainerStyle={styles.content}>
         <AppCard style={styles.summaryCard}>
@@ -140,7 +132,7 @@ export default function ProfileImprovedScreen({ navigation }) {
           textStyle={{ color: '#DC2626' }}
           style={{ borderColor: '#FECACA', backgroundColor: '#FFFFFF' }}
           left={<Feather name="log-out" size={16} color="#DC2626" />}
-          onPress={() => navigation.navigate('HomeTab')}
+          onPress={() => navigation.navigate('MainTabs', { screen: 'HomeTab' })}
         />
 
         <Text style={styles.memberSince}>Membro desde Janeiro de 2023</Text>

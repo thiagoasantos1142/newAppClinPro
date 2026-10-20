@@ -8,6 +8,7 @@ import { AppCard } from '../components/ui.jsx';
 import { RequireClinPro } from '../components/RequireClinPro.jsx';
 import { colors } from '../theme/tokens';
 import { getCommunityPosts } from '../services/modules/community.service';
+import AppHeader from '../components/AppHeader.jsx';
 
 moment.locale('pt-br');
 
@@ -140,13 +141,7 @@ export default function CommunityFeedScreen({ navigation }) {
   return (
     <RequireClinPro>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerTitleRow}>
-            <View style={styles.menuSlot} />
-            <Text style={styles.headerTitle}>Comunidade</Text>
-          </View>
-          <Text style={styles.headerSubtitle}>Dicas e trocas com outros profissionais</Text>
-        </View>
+        <AppHeader title="Comunidade" subtitle="Dicas e trocas com outros profissionais" icon="users" navigation={navigation} />
 
         <View style={styles.filterBar}>
           <ScrollView

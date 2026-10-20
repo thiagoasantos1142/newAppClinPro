@@ -6,6 +6,7 @@ import { AppButton, AppCard, Badge } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
 import { getProfile } from '../services/modules/profile.service';
 import { useAuth } from '../hooks/useAuth';
+import AppHeader from '../components/AppHeader.jsx';
 
 const formatPhoneBR = (value) => {
   const digits = String(value || '').replace(/\D/g, '');
@@ -64,15 +65,21 @@ export default function ProfileScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}> 
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={styles.container}>
+        <AppHeader title="Meu Perfil" subtitle="Carregando perfil..." icon="user" navigation={navigation} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
       </View>
     );
   }
   if (error) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}> 
-        <Text style={{ color: colors.danger }}>{error}</Text>
+      <View style={styles.container}>
+        <AppHeader title="Meu Perfil" subtitle="Não foi possível carregar" icon="user" navigation={navigation} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Text style={{ color: colors.danger }}>{error}</Text>
+        </View>
       </View>
     );
   }
@@ -80,11 +87,7 @@ export default function ProfileScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.avatar}><Feather name="user" size={42} color="#FFF" /></View>
-        <Text style={styles.name}>{profile.name}</Text>
-        <Text style={styles.role}>{profile.bio || ''}</Text>
-      </View>
+      <AppHeader title={profile.name || 'Meu Perfil'} subtitle={profile.bio || 'Perfil profissional'} icon="user" navigation={navigation} />
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.statsRow}>

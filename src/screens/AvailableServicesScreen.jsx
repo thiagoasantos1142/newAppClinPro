@@ -4,17 +4,12 @@ import { Feather } from '@expo/vector-icons';
 import { services } from '../data/mockData';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { colors } from '../theme/tokens';
+import AppHeader from '../components/AppHeader.jsx';
 
 export default function AvailableServicesScreen({ navigation }) {
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <View style={styles.menuSlot} />
-          <Text style={styles.headerTitle}>Serviços Disponíveis</Text>
-        </View>
-        <Text style={styles.headerSubtitle}>{services.length} serviços disponíveis</Text>
-      </View>
+      <AppHeader title="Serviços Disponíveis" subtitle={`${services.length} serviços disponíveis`} icon="list" />
 
       <ScrollView contentContainerStyle={styles.content}>
         {services.map((service) => (

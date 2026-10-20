@@ -1,9 +1,10 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, radius } from '../theme/tokens';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { colors, radius, textStyles } from '../theme/tokens';
 
 export function AppCard({ children, style }) {
-  return <View style={[styles.card, style]}>{children}</View>;
+  const { width } = useWindowDimensions();
+  return <View style={[styles.card, width <= 360 && styles.cardCompact, style]}>{children}</View>;
 }
 
 export function AppButton({ title, onPress, variant = 'primary', disabled = false, style, textStyle, left }) {
@@ -75,6 +76,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
+  cardCompact: { padding: 12, borderRadius: radius.md },
   button: {
     minHeight: 50,
     borderRadius: radius.md,
@@ -85,8 +87,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   buttonText: {
-    fontSize: 16,
-    fontWeight: '700',
+    ...textStyles.button,
+    flexShrink: 1,
+    textAlign: 'center',
   },
   pressed: {
     opacity: 0.9,
@@ -108,7 +111,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#E2E8F0',
   },
   badgeText: {
-    fontSize: 12,
+    ...textStyles.caption,
+    fontFamily: 'Inter_600SemiBold',
     fontWeight: '600',
   },
   badgeTextDefault: {
