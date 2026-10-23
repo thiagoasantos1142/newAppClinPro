@@ -2,11 +2,33 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Alert, AppState, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useEvent } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { AppButton, AppCard } from '../components/ui.jsx';
 import { getTrainingLessonById, saveTrainingLessonProgress } from '../services/modules/training.service';
 import { colors } from '../theme/tokens';
 import AppHeader from '../components/AppHeader.jsx';
+
+const resolveVideoUri = (videoUrl, videoId) => {
+  const candidate = String(videoUrl || videoId || '').trim();
+  if (!candidate) return null;
+
+  if (!/^https?:\/\//i.test(candidate)) {
+    return `https://stream.mux.com/${encodeURIComponent(candidate)}.m3u8`;
+  }
+
+  try {
+    const url = new URL(candidate);
+    if (url.hostname.toLowerCase() === 'stream.mux.com' && !/\.[a-z0-9]+$/i.test(url.pathname)) {
+      url.pathname = `${url.pathname.replace(/\/$/, '')}.m3u8`;
+      return url.toString();
+    }
+  } catch {
+    return candidate;
+  }
+
+  return candidate;
+};
 
 export default function VideoLessonScreen({ route, navigation }) {
   const AUTO_SAVE_INTERVAL_SECONDS = 15;
@@ -15,6 +37,7 @@ export default function VideoLessonScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hasStartedPlayback, setHasStartedPlayback] = useState(false);
+  const [hasRequestedPlayback, setHasRequestedPlayback] = useState(false);
   const [isThumbnailReady, setIsThumbnailReady] = useState(false);
   const [videoCompletionPercent, setVideoCompletionPercent] = useState(0);
   const lastPersistedSecondRef = useRef(0);
@@ -82,27 +105,32 @@ export default function VideoLessonScreen({ route, navigation }) {
 
   const resolvedTrailId = lesson?.trail_id || trailId;
   const videoUri = useMemo(() => {
-    const rawVideoUrl = String(video?.video_url || lesson?.video_url || '').trim();
-    if (!rawVideoUrl) return null;
-    return rawVideoUrl;
-  }, [lesson?.video_url, video?.video_url]);
+    return resolveVideoUri(video?.video_url || lesson?.video_url, video?.id || lesson?.video_id);
+  }, [lesson?.video_id, lesson?.video_url, video?.id, video?.video_url]);
   const thumbnailUri = useMemo(() => {
     const rawThumbnailUrl = String(video?.thumbnail_url || lesson?.thumbnail_url || '').trim();
     if (!rawThumbnailUrl) return null;
     return rawThumbnailUrl;
   }, [lesson?.thumbnail_url, video?.thumbnail_url]);
 
+  const videoSource = useMemo(() => {
+    if (!videoUri) return null;
+
+    const isHls = /\.m3u8(?:$|\?)/i.test(videoUri) || /^https?:\/\/stream\.mux\.com\//i.test(videoUri);
+    return isHls ? { uri: videoUri, contentType: 'hls' } : { uri: videoUri };
+  }, [videoUri]);
+
   const player = useVideoPlayer(
-    videoUri
-      ? {
-          uri: videoUri,
-          contentType: 'hls',
-        }
-      : null,
+    videoSource,
     (instance) => {
       instance.loop = false;
     }
   );
+  const playerStatus = useEvent(player, 'statusChange', {
+    status: player.status,
+    error: null,
+  });
+  const playbackError = playerStatus?.status === 'error' ? playerStatus.error : null;
 
   useEffect(() => {
     if (!videoUri) return;
@@ -113,6 +141,11 @@ export default function VideoLessonScreen({ route, navigation }) {
     if (!thumbnailUri) return;
     console.log('[VideoLessonScreen] Thumbnail URL:', thumbnailUri);
   }, [thumbnailUri]);
+
+  useEffect(() => {
+    if (!playbackError) return;
+    console.log('[VideoLessonScreen] Falha na reprodução:', playbackError?.message || playbackError);
+  }, [playbackError]);
 
   useEffect(() => {
     if (!thumbnailUri) {
@@ -128,22 +161,30 @@ export default function VideoLessonScreen({ route, navigation }) {
 
   useEffect(() => {
     setHasStartedPlayback(false);
+    setHasRequestedPlayback(false);
   }, [videoUri]);
+
+  useEffect(() => {
+    if (!hasRequestedPlayback || playerStatus?.status !== 'readyToPlay') return;
+    try {
+      player.play();
+    } catch {
+      // O status do player disparará novamente se a view ainda estiver montando.
+    }
+  }, [hasRequestedPlayback, player, playerStatus?.status]);
 
   useEffect(() => {
     if (!videoUri || hasStartedPlayback) return;
 
     const interval = setInterval(() => {
-      let currentTime = 0;
       let isPlaying = false;
       try {
-        currentTime = Number(player.currentTime || 0);
         isPlaying = Boolean(player.playing);
       } catch {
         return;
       }
 
-      if (isPlaying || currentTime > 0) {
+      if (isPlaying) {
         setHasStartedPlayback(true);
       }
     }, 250);
@@ -159,6 +200,7 @@ export default function VideoLessonScreen({ route, navigation }) {
 
   const lessonTitle = video?.title || lesson?.title || 'Aula';
   const durationLabel = video?.duration_label || lesson?.duration_label || null;
+  const shouldRenderVideo = hasRequestedPlayback || hasStartedPlayback;
   const hasQuizRequirement = Boolean(lesson?.is_quiz && questionsCount > 0);
   const canGoToNextLesson = Boolean(nextLesson) && videoCompletionPercent >= 98 && (!hasQuizRequirement || quizCompleted);
   const maxSeekFromApi = useMemo(() => {
@@ -298,46 +340,23 @@ export default function VideoLessonScreen({ route, navigation }) {
       return;
     }
 
-    const interval = setInterval(() => {
-      try {
-        const duration = Math.max(0, Number(player?.duration || lesson?.duration_seconds || 0));
-        if (duration <= 0) return;
+    if (playerStatus?.status !== 'readyToPlay') return;
 
-        const target = Math.min(lastPosition, duration);
-        if (target <= 0) {
-          hasAppliedAutoResumeRef.current = true;
-          clearInterval(interval);
-          return;
-        }
+    try {
+      const duration = Math.max(0, Number(player?.duration || lesson?.duration_seconds || 0));
+      const target = duration > 0 ? Math.min(lastPosition, Math.max(0, duration - 0.5)) : lastPosition;
 
-        const currentTime = Math.max(0, Number(player?.currentTime || 0));
-        const isPlaying = Boolean(player?.playing);
-
-        if (!isPlaying && currentTime < 1) {
-          player.currentTime = 0;
-          latestPlaybackSecondRef.current = 0;
-          previousPlaybackSecondRef.current = 0;
-          player.play();
-          return;
-        }
-
-        if (currentTime >= 1) {
-          player.currentTime = target;
-          maxSeekAllowedRef.current = Math.max(maxSeekAllowedRef.current, target);
-          highestReachedSecondRef.current = Math.max(highestReachedSecondRef.current, target);
-          latestPlaybackSecondRef.current = target;
-          previousPlaybackSecondRef.current = target;
-          player.pause();
-          hasAppliedAutoResumeRef.current = true;
-          clearInterval(interval);
-        }
-      } catch {
-        // Aguarda o player ficar pronto.
-      }
-    }, 200);
-
-    return () => clearInterval(interval);
-  }, [error, lesson?.duration_seconds, lesson?.id, lesson?.last_position_seconds, loading, player, videoUri]);
+      player.pause();
+      player.currentTime = target;
+      maxSeekAllowedRef.current = Math.max(maxSeekAllowedRef.current, target);
+      highestReachedSecondRef.current = Math.max(highestReachedSecondRef.current, target);
+      latestPlaybackSecondRef.current = target;
+      previousPlaybackSecondRef.current = target;
+      hasAppliedAutoResumeRef.current = true;
+    } catch {
+      // O evento de status tentará novamente caso o player ainda esteja finalizando a carga.
+    }
+  }, [error, lesson?.duration_seconds, lesson?.id, lesson?.last_position_seconds, loading, player, playerStatus?.status, videoUri]);
 
   useEffect(() => {
     if (!videoUri || loading || error || !lesson?.id) return;
@@ -488,14 +507,22 @@ export default function VideoLessonScreen({ route, navigation }) {
       <View style={styles.videoBox}>
         {videoUri && !loading && !error ? (
           <>
-            <VideoView
-              style={styles.video}
-              player={player}
-              nativeControls
-              contentFit="contain"
-            />
-            {!!thumbnailUri && !hasStartedPlayback && (
-              <View pointerEvents="none" style={styles.thumbnailOverlay}>
+            {shouldRenderVideo && (
+              <VideoView
+                style={styles.video}
+                player={player}
+                nativeControls
+                contentFit="contain"
+                surfaceType="textureView"
+              />
+            )}
+            {!!thumbnailUri && !shouldRenderVideo && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Reproduzir vídeo"
+                onPress={() => setHasRequestedPlayback(true)}
+                style={styles.thumbnailOverlay}
+              >
                 <Image
                   source={{ uri: thumbnailUri }}
                   style={styles.thumbnailImage}
@@ -513,6 +540,31 @@ export default function VideoLessonScreen({ route, navigation }) {
                     <Feather name="play" size={28} color="#FFFFFF" />
                   </View>
                 )}
+              </Pressable>
+            )}
+            {!thumbnailUri && !hasStartedPlayback && playerStatus?.status === 'readyToPlay' && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Reproduzir vídeo"
+                onPress={() => setHasRequestedPlayback(true)}
+                style={styles.playerStartOverlay}
+              >
+                <View style={styles.thumbnailPlayBadge}>
+                  <Feather name="play" size={28} color="#FFFFFF" />
+                </View>
+                <Text style={styles.playerStateText}>Reproduzir vídeo</Text>
+              </Pressable>
+            )}
+            {playerStatus?.status === 'loading' && !thumbnailUri && (
+              <View pointerEvents="none" style={styles.playerStateOverlay}>
+                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Text style={styles.playerStateText}>Carregando vídeo...</Text>
+              </View>
+            )}
+            {!!playbackError && (
+              <View pointerEvents="none" style={styles.playerStateOverlay}>
+                <Feather name="alert-circle" size={28} color="#FFFFFF" />
+                <Text style={styles.playerStateText}>Não foi possível reproduzir este vídeo.</Text>
               </View>
             )}
           </>
@@ -665,6 +717,27 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.35)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  playerStateOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 24,
+  },
+  playerStartOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  playerStateText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   videoTouch: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   videoCenter: { alignItems: 'center' },

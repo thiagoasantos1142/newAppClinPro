@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RequireClinPro } from '../components/RequireClinPro.jsx';
 import { AppCard, Badge, ProgressBar } from '../components/ui.jsx';
@@ -169,11 +169,19 @@ export default function TrainingListScreen({ navigation }) {
                 contentContainerStyle={styles.horizontalList}
               >
                 {recommendedLessons.map((item) => (
-                  <AppCard key={item.id} style={styles.recCard}>
-                    <View style={styles.emojiArea}><Text style={styles.emoji}>{item.emoji}</Text></View>
-                    <Text style={styles.recTitle}>{item.title}</Text>
-                    <Text style={styles.muted}>{item.duration}</Text>
-                  </AppCard>
+                  <Pressable
+                    key={item.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Abrir aula ${item.title}`}
+                    onPress={() => navigation.navigate('VideoLesson', { lessonId: item.id })}
+                    style={({ pressed }) => [styles.recPressable, pressed && styles.recPressed]}
+                  >
+                    <AppCard style={styles.recCard}>
+                      <View style={styles.emojiArea}><Text style={styles.emoji}>{item.emoji}</Text></View>
+                      <Text style={styles.recTitle}>{item.title}</Text>
+                      <Text style={styles.muted}>{item.duration}</Text>
+                    </AppCard>
+                  </Pressable>
                 ))}
               </ScrollView>
             )}
@@ -214,7 +222,9 @@ const styles = StyleSheet.create({
   linkButton: { color: colors.primary, fontWeight: '700', fontSize: 14 },
   horizontalList: { gap: 10, paddingRight: 6, paddingBottom: 6 },
   horizontalScroll: { overflow: 'visible' },
-  recCard: { width: 150, marginVertical: 4 },
+  recPressable: { width: 150, marginVertical: 4 },
+  recPressed: { opacity: 0.75 },
+  recCard: { flex: 1 },
   emojiArea: { height: 90, borderRadius: 12, backgroundColor: colors.secondary, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   emoji: { fontSize: 44 },
   recTitle: { color: colors.cardForeground, fontSize: 14, fontWeight: '700', marginBottom: 4 },
